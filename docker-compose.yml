@@ -1,0 +1,62 @@
+services:
+  mysql:
+    image: mysql:5.7  # เปลี่ยนเป็น 5.7 เพื่อรองรับ CPU x86-64-v1
+    container_name: attractions_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-0988709784Kk!}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-my_db}
+      MYSQL_USER: ${MYSQL_USER:-user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-pass}
+      TZ: Asia/Bangkok
+    ports:
+      - "3306:3306" # เปิดให้ภายนอกเข้าถึงได้
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro # เปิดใช้ถ้ามีไฟล์สคริปต์
+    networks: [stack]
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: attractions_pma
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - "8081:80" # เข้าผ่าน http://10.198.110.26:8081
+    depends_on: [mysql]
+    networks: [stack]
+
+  api:
+    build: 
+      context: ./backend  # ตรวจสอบชื่อโฟลเดอร์ให้ตรงกับที่มีไฟล์ Go
+    container_name: attractions_api
+    restart: unless-stopped
+    environment:
+      - DB_DSN=${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(mysql:3306)/${MYSQL_DATABASE}?parseTime=true
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    depends_on: [mysql]
+    networks: [stack]
+
+  frontend:
+    build:
+      context: ./frontend # ตรวจสอบชื่อโฟลเดอร์ให้ตรงกับที่มีไฟล์ React.tsx
+      args:
+        # ส่งค่าให้ Vite ใช้ตอน Build (ต้องมี VITE_ นำหน้า)
+        - VITE_API_URL=http://10.198.110.26:3001 
+    container_name: attractions_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80" # Map พอร์ต 80 ของ Nginx ออกมาเป็น 3000
+    depends_on: [api]
+    networks: [stack]
+
+volumes:
+  mysql_data:
+
+networks:
+  stack:
+    driver: bridge
