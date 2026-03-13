@@ -9,7 +9,7 @@ pipeline {
         booleanParam(
             name: 'CLEAN_VOLUMES',
             defaultValue: false,
-            description: 'เลือก True หากต้องการลบข้อมูลใน Database ทิ้งแล้วเริ่มใหม่'
+            description: 'เลือก True หากต้องการลบข้อมูลใน Database ทิ้งแล้วเริ่มใหม่ (ระวัง! ข้อมูลหาย)'
         )
         string(
             name: 'API_HOST',
@@ -33,7 +33,7 @@ pipeline {
             steps {
                 script {
                     echo "Creating .env file from Jenkins Credentials..."
-                    // ต้องไปสร้าง Credentials ID: MYSQL_ROOT_PASSWORD ใน Jenkins ก่อนนะครับ
+                    // อย่าลืมไปที่ Jenkins -> Manage Jenkins -> Credentials แล้วสร้าง ID: MYSQL_ROOT_PASSWORD นะครับ
                     withCredentials([
                         string(credentialsId: 'MYSQL_ROOT_PASSWORD', variable: 'ROOT_PASS')
                     ]) {
@@ -55,14 +55,16 @@ VITE_API_URL=${params.API_HOST}
         stage('Deploy Stack') {
             steps {
                 script {
-                    def downCmd = 'docker-compose down'
+                    // ใช้ docker compose (ไม่มีขีดกลาง) ตามเครื่องของคุณ
+                    def downCmd = 'docker compose down'
                     if (params.CLEAN_VOLUMES) {
-                        downCmd = 'docker-compose down -v'
-                        echo "Cleaning volumes..."
+                        downCmd = 'docker compose down -v'
+                        echo "Cleaning volumes and stopping containers..."
                     }
                     sh downCmd
-                    // Build ใหม่และรันขึ้นมา
-                    sh 'docker-compose up -d --build'
+                    
+                    echo "Building and starting containers..."
+                    sh 'docker compose up -d --build'
                 }
             }
         }
@@ -70,13 +72,17 @@ VITE_API_URL=${params.API_HOST}
         stage('Health Check') {
             steps {
                 script {
-                    echo "Waiting for services (15s)..."
+                    echo "Waiting for services to be ready (15s)..."
                     sleep 15
-                    // เช็คว่า Container ยังอยู่ดีไหม
-                    sh 'docker-compose ps'
-                    // เช็คว่า API (Go Fiber) ตอบรับไหม
-                    sh "curl -f ${params.API_HOST}/attractions || exit 1"
-                    echo "All systems GO!"
+                    
+                    echo "Current Container Status:"
+                    sh 'docker compose ps'
+                    
+                    echo "Testing API connection..."
+                    // ทดสอบ curl ไปที่ endpoint ของ Go Fiber
+                    sh "curl -f ${params.API_HOST}/attractions || (echo 'API not responding' && exit 1)"
+                    
+                    echo " All systems GO!"
                 }
             }
         }
@@ -84,14 +90,20 @@ VITE_API_URL=${params.API_HOST}
 
     post {
         always {
+            echo "Cleaning up dangling images..."
             sh 'docker image prune -f'
         }
         success {
-            echo " Deploy สำเร็จ! เข้าใช้งานได้ที่ http://10.198.110.26:3000"
+            echo "--------------------------------------------------------"
+            echo " Deploy สำเร็จแล้ว!"
+            echo "Frontend: http://10.198.110.26:3000"
+            echo "API: http://10.198.110.26:3001"
+            echo "phpMyAdmin: http://10.198.110.26:8081"
+            echo "--------------------------------------------------------"
         }
         failure {
-            echo " Deploy ล้มเหลว ตรวจสอบ Log ด้านบน"
-            sh 'docker-compose logs --tail=50'
+            echo " Deploy ล้มเหลว! กำลังดึง Logs 50 บรรทัดสุดท้ายมาให้ดู..."
+            sh 'docker compose logs --tail=50'
         }
     }
 }
