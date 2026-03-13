@@ -1,5 +1,5 @@
 # ---------- Stage 1: Build the Go binary ----------
-FROM golang:1.22-alpine AS builder
+FROM golang:alpine AS builder  # <--- แก้แค่บรรทัดนี้ครับ
 
 WORKDIR /app
 
@@ -11,7 +11,6 @@ RUN go mod download
 COPY . .
 
 # Build เป็นไฟล์ binary ชื่อ "main"
-# CGO_ENABLED=0 เพื่อให้รันบน alpine ได้อย่างอิสระ
 RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 
 # ---------- Stage 2: Production runtime ----------
@@ -22,9 +21,6 @@ WORKDIR /root/
 
 # คัดลอกไฟล์ binary จาก stage แรก
 COPY --from=builder /app/main .
-
-# (ถ้ามี) คัดลอกไฟล์ .env หรือโฟลเดอร์อื่นๆ เช่น static/views
-# COPY --from=builder /app/.env .
 
 EXPOSE 3001
 
