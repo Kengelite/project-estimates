@@ -30,7 +30,7 @@ services:
 
   api:
     build: 
-      context: ./backend  # ตรวจสอบชื่อโฟลเดอร์ให้ตรงกับที่มีไฟล์ Go
+      context: ./backend-estimates  # <--- แก้เป็นชื่อโฟลเดอร์ที่ถูกต้องแล้ว
     container_name: attractions_api
     restart: unless-stopped
     environment:
@@ -43,7 +43,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend # ตรวจสอบชื่อโฟลเดอร์ให้ตรงกับที่มีไฟล์ React.tsx
+      context: ./frontend-estimates # <--- แก้เป็นชื่อโฟลเดอร์ที่ถูกต้องแล้ว
       args:
         # ส่งค่าให้ Vite ใช้ตอน Build (ต้องมี VITE_ นำหน้า)
         - VITE_API_URL=http://10.198.110.26:3001 
