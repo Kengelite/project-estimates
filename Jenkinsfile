@@ -33,7 +33,6 @@ pipeline {
             steps {
                 script {
                     echo "Creating .env file from Jenkins Credentials..."
-                    // อย่าลืมไปที่ Jenkins -> Manage Jenkins -> Credentials แล้วสร้าง ID: MYSQL_ROOT_PASSWORD นะครับ
                     withCredentials([
                         string(credentialsId: 'MYSQL_ROOT_PASSWORD', variable: 'ROOT_PASS')
                     ]) {
@@ -55,7 +54,6 @@ VITE_API_URL=${params.API_HOST}
         stage('Deploy Stack') {
             steps {
                 script {
-                    // ใช้ docker compose (ไม่มีขีดกลาง) ตามเครื่องของคุณ
                     def downCmd = 'docker compose down'
                     if (params.CLEAN_VOLUMES) {
                         downCmd = 'docker compose down -v'
@@ -79,8 +77,8 @@ VITE_API_URL=${params.API_HOST}
                     sh 'docker compose ps'
                     
                     echo "Testing API connection..."
-                    // ทดสอบ curl ไปที่ endpoint ของ Go Fiber
-                    sh "curl -f ${params.API_HOST}/attractions || (echo 'API not responding' && exit 1)"
+                    // แก้ตรงนี้! ยิงไปที่หน้าแรกสุด (/) แทน /attractions
+                    sh "curl -f ${params.API_HOST}/ || (echo 'API not responding' && exit 1)"
                     
                     echo " All systems GO!"
                 }
@@ -95,7 +93,7 @@ VITE_API_URL=${params.API_HOST}
         }
         success {
             echo "--------------------------------------------------------"
-            echo " Deploy สำเร็จแล้ว!"
+            echo "🚀 Deploy สำเร็จแล้ว!"
             echo "Frontend: http://10.198.110.26:3000"
             echo "API: http://10.198.110.26:3001"
             echo "phpMyAdmin: http://10.198.110.26:8081"
