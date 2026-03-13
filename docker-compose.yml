@@ -30,20 +30,20 @@ services:
 
   api:
     build: 
-      context: ./backend-estimates  # <--- แก้เป็นชื่อโฟลเดอร์ที่ถูกต้องแล้ว
+      context: ./backend-estimates
     container_name: attractions_api
     restart: unless-stopped
     environment:
       - DB_DSN=${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(mysql:3306)/${MYSQL_DATABASE}?parseTime=true
-      - PORT=3001
+      - PORT=3000  # <--- แก้ให้ตรงกับพอร์ตที่ Go Fiber ทำงานอยู่จริง
     ports:
-      - "3001:3001"
+      - "3001:3000" # <--- แก้แล้ว: แมปพอร์ต 3001 หน้าบ้าน ให้วิ่งเข้า 3000 หลังบ้าน
     depends_on: [mysql]
     networks: [stack]
 
   frontend:
     build:
-      context: ./frontend-estimates # <--- แก้เป็นชื่อโฟลเดอร์ที่ถูกต้องแล้ว
+      context: ./frontend-estimates
       args:
         # ส่งค่าให้ Vite ใช้ตอน Build (ต้องมี VITE_ นำหน้า)
         - VITE_API_URL=http://10.198.110.26:3001 
