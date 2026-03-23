@@ -1,12 +1,22 @@
 import React, { useState } from "react";
-
+import { useNavigate } from "react-router-dom"; 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+const navigate = useNavigate(); // 2. สร้าง instance ของ navigate
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Attempting to login with:", { email, password });
+    
+    // --- ส่วนนี้คือ Logic สมมติ ---
+    if (email && password) {
+      console.log("Login Success!");
+      // 3. สั่งให้ Navigate ไปที่หน้า dashboard
+      navigate("/dashboard");
+    } else {
+      alert("Please fill in all fields");
+    }
   };
 
   return (
