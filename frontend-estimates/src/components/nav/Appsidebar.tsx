@@ -5,24 +5,23 @@ import { Link, useLocation } from "react-router";
 
 import { useNavigate } from "react-router";
 
-import { ChevronRight, Ellipsis,
-    // ClipboardList 
-} from "lucide-react";
-
 import {
-  ChartBarIcon,
-//   FolderIcon,
-//   ClipboardDocumentCheckIcon,
-//   CubeIcon,
-//   UsersIcon,
-//   Squares2X2Icon,
-//   TagIcon,
-//   BuildingStorefrontIcon,
-//   BuildingOffice2Icon,
-//   MapPinIcon,
-//   WrenchScrewdriverIcon,
+  ChevronRight,
+  Ellipsis,
+  // ClipboardList
+} from "lucide-react";
+import {
+  Squares2X2Icon, // แดชบอร์ด
+  AcademicCapIcon, // จัดการหลักสูตร
+  BookOpenIcon, // จัดการรายวิชานอกคณะ
+  BanknotesIcon, // จัดการสาธารณูปโภค (ถุงเงิน)
+  BuildingLibraryIcon, // จัดการบริหารส่วนกลางวิทยาลัย
+  ClipboardDocumentCheckIcon, // จัดการบริหารงานวิทยาลัย
+  InboxStackIcon, // จัดการบริหารหลักสูตร (ไอคอนแนวกล่องเอกสาร/ชั้น)
+  DocumentCheckIcon, // สรุปงบประมาณประจำปี
+  DocumentTextIcon, // สรุปข้อมูลงบประมาณ
+  ArrowDownOnSquareIcon, // นำข้อมูลเข้าระบบ
   ArrowRightStartOnRectangleIcon,
-//   CameraIcon,
 } from "@heroicons/react/24/outline";
 
 import { useSidebar } from "../context/useSidebar";
@@ -54,88 +53,65 @@ type OpenSubmenu = {
 
 const navItems: NavItem[] = [
   {
-    icon: <ChartBarIcon className="w-5 h-5" />,
-    name: "dashboard",
+    icon: <Squares2X2Icon className="w-5 h-5" />,
+    name: "แดชบอร์ด",
     path: "/dashboard",
     roles: ["admin", "superadmin", "superstaff"],
   },
-//   {
-//     icon: <FolderIcon className="w-5 h-5" />,
-//     name: "โครงการใหญ่ทั้งหมด",
-//     path: "/superproject",
-//     roles: ["admin", "superadmin", "superstaff"],
-//   },
-//    {
-//     icon: <ClipboardList className="w-5 h-5" />,
-//     name: "โครงการทั้งหมด",
-//     path: "/project",
-//     roles: ["admin", "superadmin", "superstaff"],
-//   },
-//   {
-//     icon: <ClipboardDocumentCheckIcon className="w-5 h-5" />,
-//     name: "งานที่ได้รับผิดชอบ",
-//     path: "/responsible",
-//     roles: ["staff"],
-//   },
-//   {
-//     icon: <ClipboardDocumentCheckIcon className="w-5 h-5" />,
-//     name: "ตรวจรับงาน",
-//     path: "/checksuperproject",
-//     roles: ["admin", "superadmin"],
-//   },
-//   {
-//     icon: <CubeIcon className="w-5 h-5" />,
-//     name: "สินค้า",
-//     path: "/product",
-//     roles: ["admin", "superadmin", "superstaff"],
-//   },
-//   {
-//     icon: <UsersIcon className="w-5 h-5" />,
-//     name: "พนักงาน",
-//     path: "/user",
-//     roles: ["admin", "superadmin"],
-//   },
-//   {
-//     name: "จัดการข้อมูลสินค้า",
-//     icon: <Squares2X2Icon className="w-5 h-5" />,
-//     subItems: [
-//       {
-//         name: "ประเภท",
-//         path: "/category",
-//         icon: <TagIcon className="w-4 h-4" />,
-//       },
-//       {
-//         name: "แบรนด์",
-//         path: "/brand",
-//         icon: <BuildingStorefrontIcon className="w-4 h-4" />,
-//       },
-//       {
-//         name: "ถ่ายรูปภาพ",
-//         path: "/project-image",
-//         icon: <CameraIcon className="w-4 h-4" />,
-//       },
-//     ],
-//     roles: ["admin", "superadmin", "superstaff"],
-//   },
-
-//   {
-//     name: "จัดการข้อมูลทั่วไป",
-//     icon: <WrenchScrewdriverIcon className="w-5 h-5" />,
-//     subItems: [
-//       {
-//         name: "หน่วยงาน",
-//         path: "/agency",
-//         icon: <BuildingOffice2Icon className="w-4 h-4" />,
-//       },
-//       {
-//         name: "จังหวัด",
-//         path: "/province",
-//         icon: <MapPinIcon className="w-4 h-4" />,
-//       },
-//     ],
-//     roles: ["admin", "superadmin", "superstaff"],
-//   },
-
+  {
+    icon: <AcademicCapIcon className="w-5 h-5" />,
+    name: "จัดการหลักสูตร",
+    path: "/courses",
+    roles: ["admin", "superadmin", "superstaff"],
+  },
+  {
+    icon: <BookOpenIcon className="w-5 h-5" />,
+    name: "จัดการรายวิชานอกคณะ",
+    path: "/subjects",
+    roles: ["admin", "superadmin", "superstaff"],
+  },
+  {
+    icon: <BanknotesIcon className="w-5 h-5" />,
+    name: "จัดการสาธารณูปโภค",
+    path: "/funds",
+    roles: ["admin", "superadmin", "superstaff"],
+  },
+  {
+    icon: <BuildingLibraryIcon className="w-5 h-5" />,
+    name: "จัดการบริหารส่วนกลางวิทยาลัย",
+    path: "/central",
+    roles: ["admin", "superadmin", "superstaff"],
+  },
+  {
+    icon: <ClipboardDocumentCheckIcon className="w-5 h-5" />,
+    name: "จัดการบริหารงานวิทยาลัย",
+    path: "/university-work",
+    roles: ["admin", "superadmin", "superstaff"],
+  },
+  {
+    icon: <InboxStackIcon className="w-5 h-5" />,
+    name: "จัดการบริหารหลักสูตร",
+    path: "/curriculum",
+    roles: ["admin", "superadmin", "superstaff"],
+  },
+  {
+    icon: <DocumentCheckIcon className="w-5 h-5" />,
+    name: "สรุปงบประมาณประจำปี",
+    path: "/annual-budget-summary",
+    roles: ["admin", "superadmin", "superstaff"],
+  },
+  {
+    icon: <DocumentTextIcon className="w-5 h-5" />,
+    name: "สรุปข้อมูลงบประมาณ",
+    path: "/annual-budget-management",
+    roles: ["admin", "superadmin", "superstaff"],
+  },
+  {
+    icon: <ArrowDownOnSquareIcon className="w-5 h-5" />,
+    name: "นำข้อมูลเข้าระบบ",
+    path: "/import-data",
+    roles: ["admin", "superadmin", "superstaff"],
+  },
   {
     icon: <ArrowRightStartOnRectangleIcon className="w-5 h-5" />,
     name: "ออกจากระบบ",
@@ -181,7 +157,7 @@ const AppSidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-//   const { user, logout } = useAuth();
+  //   const { user, logout } = useAuth();
 
   const [manualOpenSubmenu, setManualOpenSubmenu] = useState<
     OpenSubmenu | "closed"
@@ -415,7 +391,7 @@ const AppSidebar: React.FC = () => {
   const handleLogout = useCallback(async () => {
     // await logout();
     navigate("/login");
-  }, [ navigate]);
+  }, [navigate]);
 
   // เรียกเมนูออกมาแสดง
   // const renderMenuItem = (nav: NavItem, index: number, menuType: MenuType) => {
@@ -584,7 +560,7 @@ const AppSidebar: React.FC = () => {
             >
               <span className={`${iconClass} text-red-400`}>{nav.icon}</span>
               {shouldShowContent && (
-                <span className="menu-item-text text-red-400">{nav.name}</span>
+                <span className="menu-item-text text-red-400 text-xs">{nav.name}</span>
               )}
             </button>
           );
@@ -601,7 +577,7 @@ const AppSidebar: React.FC = () => {
             >
               <span className={iconClass}>{nav.icon}</span>
               {shouldShowContent && (
-                <span className="menu-item-text">{nav.name}</span>
+                <span className="menu-item-text text-xs">{nav.name}</span>
               )}
             </Link>
           );
@@ -614,7 +590,7 @@ const AppSidebar: React.FC = () => {
         <ul className="flex flex-col gap-1">
           {items
             .filter(
-                // user?.role as string
+              // user?.role as string
               (nav) => !nav.roles || nav.roles.includes("admin" as string),
             )
             .map((nav, index) => (
@@ -624,7 +600,7 @@ const AppSidebar: React.FC = () => {
       );
     },
     [
-    //   user?.role,
+      //   user?.role,
       openSubmenu,
       shouldShowContent,
       shouldCenterCollapsed,
