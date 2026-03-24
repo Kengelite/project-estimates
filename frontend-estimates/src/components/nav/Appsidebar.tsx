@@ -560,7 +560,9 @@ const AppSidebar: React.FC = () => {
             >
               <span className={`${iconClass} text-red-400`}>{nav.icon}</span>
               {shouldShowContent && (
-                <span className="menu-item-text text-red-400 text-xs">{nav.name}</span>
+                <span className="menu-item-text text-red-400 text-xs">
+                  {nav.name}
+                </span>
               )}
             </button>
           );
@@ -656,25 +658,25 @@ const AppSidebar: React.FC = () => {
             <div className="flex items-center gap-3">
               <img
                 className="dark:hidden"
-                src="/iconweb.jpeg"
+                src="../../../../public/CPFF.png"
                 alt="Logo"
                 width={50}
-                height={40}
+                height={50}
               />
               <img
                 className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
+                src="../../../../public/CPFF.png"
                 alt="Logo"
                 width={50}
                 height={40}
               />
               <span className="text-lg font-semibold text-gray-800 dark:text-white">
-                Project Estimates
+                 Financial Forecast
               </span>
             </div>
           ) : (
             <img
-              src="/images/logo/logo-icon.svg"
+              src="../../../../public/CPFF.png"
               alt="Logo"
               width={32}
               height={32}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 // ── Types ───────────────────────────────────────────────────────────
 interface Course {
@@ -145,66 +146,69 @@ function CourseCard({
   course,
   onEdit,
   onDelete,
+  onDetail, // รับค่า onDetail เข้ามา
 }: {
   course: Course;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
+  onDetail: (id: number) => void; // กำหนด Type ว่าต้องส่ง ID ไปด้วย
 }) {
   return (
-    <>
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-3 hover:shadow-sm transition-shadow">
-        <p className="text-sm font-medium text-gray-800 leading-snug">
-          {course.name}
-        </p>
-        <div className="flex items-center gap-2">
-          <Badge text={course.code} variant="code" />
-          <Badge text={course.type} variant="type" />
-        </div>
-        <div className="flex items-center gap-2 mt-auto">
-          <button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors">
-            ดูรายละเอียดหลักสูตร
-          </button>
-          <button
-            onClick={() => onEdit(course.id)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-400 hover:bg-orange-500 text-white transition-colors flex-shrink-0"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => onDelete(course.id)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors flex-shrink-0"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6 M14 11v6" />
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-            </svg>
-          </button>
-        </div>
+    <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-3 hover:shadow-sm transition-shadow">
+      <p className="text-sm font-medium text-gray-800 leading-snug">
+        {course.name}
+      </p>
+      <div className="flex items-center gap-2">
+        <Badge text={course.code} variant="code" />
+        <Badge text={course.type} variant="type" />
       </div>
-    </>
+      <div className="flex items-center gap-2 mt-auto">
+        <button
+          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors"
+          onClick={() => onDetail(course.id)} // เรียกใช้ onDetail พร้อมแนบ ID ของคอร์สนั้นไป
+        >
+          ดูรายละเอียดหลักสูตร
+        </button>
+        <button
+          onClick={() => onEdit(course.id)}
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-400 hover:bg-orange-500 text-white transition-colors flex-shrink-0"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+        </button>
+        <button
+          onClick={() => onDelete(course.id)}
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors flex-shrink-0"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6 M14 11v6" />
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+          </svg>
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -214,15 +218,16 @@ function LevelSection({
   onAddCourse,
   onEdit,
   onDelete,
+  onDetail, // รับ onDetail มาจาก Main Component
 }: {
   level: Level;
   onAddCourse: (levelId: number) => void;
   onEdit: (courseId: number) => void;
   onDelete: (courseId: number) => void;
+  onDetail: (courseId: number) => void; // กำหนด Type
 }) {
   return (
     <section className="space-y-4">
-      {/* Section header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center text-2xl shadow-sm">
@@ -258,7 +263,6 @@ function LevelSection({
         </button>
       </div>
 
-      {/* Course grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {level.courses.map((course) => (
           <CourseCard
@@ -266,6 +270,7 @@ function LevelSection({
             course={course}
             onEdit={onEdit}
             onDelete={onDelete}
+            onDetail={onDetail} // ส่ง onDetail ลงไปให้ CourseCard
           />
         ))}
       </div>
@@ -276,9 +281,14 @@ function LevelSection({
 // ── Main Component ───────────────────────────────────────────────────
 export default function CourseList() {
   const [levels, setLevels] = useState<Level[]>(initialLevels);
+  const navigate = useNavigate();
 
   const handleEdit = (courseId: number) => {
-    alert(`แก้ไขหลักสูตร ID: ${courseId}`);
+    navigate(`edit/${courseId}`); // ปรับ Path ให้ต่างกับ detail นิดหน่อยเพื่อความชัดเจน
+  };
+
+  const handleDetail = (courseId: number) => {
+    navigate(`${courseId}`); // ไปยังหน้ารายละเอียดหลักสูตร
   };
 
   const handleDelete = (courseId: number) => {
@@ -296,18 +306,17 @@ export default function CourseList() {
   };
 
   return (
-    <>
-      <div className="space-y-10 p-6">
-        {levels.map((level) => (
-          <LevelSection
-            key={level.id}
-            level={level}
-            onAddCourse={handleAddCourse}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        ))}
-      </div>
-    </>
+    <div className="space-y-10 p-6">
+      {levels.map((level) => (
+        <LevelSection
+          key={level.id}
+          level={level}
+          onAddCourse={handleAddCourse}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onDetail={handleDetail} // โยนฟังก์ชันลงไป
+        />
+      ))}
+    </div>
   );
 }

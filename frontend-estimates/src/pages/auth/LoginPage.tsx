@@ -1,14 +1,14 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-const navigate = useNavigate(); // 2. สร้าง instance ของ navigate
+  const navigate = useNavigate(); // 2. สร้าง instance ของ navigate
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // --- ส่วนนี้คือ Logic สมมติ ---
     if (email && password) {
       console.log("Login Success!");
@@ -23,24 +23,15 @@ const navigate = useNavigate(); // 2. สร้าง instance ของ navigat
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
-
           {/* Icon */}
-          <div className="flex justify-center mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gray-900 flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
+          <div className="flex justify-center mb-2">
+               <img
+                className=""
+                src="../../../../public/CPFF.png"
+                alt="Logo"
+                width={160}
+                height={160}
+              />
           </div>
 
           {/* Header */}
@@ -48,7 +39,7 @@ const navigate = useNavigate(); // 2. สร้าง instance ของ navigat
             <h1 className="text-2xl font-semibold text-gray-900 mb-2">
               Sign in
             </h1>
-            <p className="text-sm text-gray-500">Continue to your account</p>
+            {/* <p className="text-sm text-gray-500">Continue to your account</p> */}
           </div>
 
           {/* Form */}
@@ -82,7 +73,6 @@ const navigate = useNavigate(); // 2. สร้าง instance ของ navigat
               Sign in
             </button>
           </form>
-
         </div>
       </div>
     </div>

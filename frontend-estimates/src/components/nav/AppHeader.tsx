@@ -87,20 +87,20 @@ const AppHeader: React.FC = () => {
             <div className="flex items-center gap-3">
               <img
                 className="dark:hidden"
-                src="/iconweb.jpeg"
+                src="../../../../public/CPFF.png"
                 alt="Logo"
                 width={50}
                 height={40}
               />
               <img
                 className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
+                src="../../../../public/CPFF.png"
                 alt="Logo"
                 width={50}
                 height={40}
               />
               <span className="text-lg font-semibold text-gray-800 dark:text-white">
-                Project Estimates
+                CP Financial Forecast
               </span>
             </div>
           </Link>
