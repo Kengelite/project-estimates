@@ -4,7 +4,7 @@ import { LoginPage } from "./pages/auth/LoginPage";
 import Dashboard from "./pages/admin/dashboard";
 import AppLayout from "./components/nav/AppLayout";
 import CourseList from "./pages/admin/course/course";
-import SubjectManagement from "./pages/admin/subjects";
+import SubjectManagement from "./pages/admin/subject/subjects";
 import FundManagement from "./pages/admin/fund";
 import CentralDeptManagement from "./pages/admin/central";
 import UniversityWorkManagement from "./pages/admin/universitywork";
@@ -14,6 +14,8 @@ import BudgetSummaryManagement from "./pages/admin/budgetSummarymanagement";
 import ImportDataPage from "./pages/admin/importdataPage";
 import CourseDetail from "./pages/admin/course/coursedetail";
 import EditCourse from "./pages/admin/course/editcourse";
+import SubjectDetail from "./pages/admin/subject/subjectdetail";
+import EditSubjectDetail from "./pages/admin/subject/subjectedit";
 function App() {
   return (
     //  <AuthProvider>
@@ -25,6 +27,8 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/courses" element={<CourseList />} />
           <Route path="/subjects" element={<SubjectManagement />} />
+          <Route path="/subjects/:id" element={<SubjectDetail />} />
+          <Route path="/subjects/edit/:id" element={<EditSubjectDetail />} />
           <Route path="/funds" element={<FundManagement />} />
           <Route path="/central" element={<CentralDeptManagement />} />
           <Route path="/curriculum" element={<CurriculumManagement />} />
@@ -46,13 +50,7 @@ function App() {
             path="/annual-budget-management"
             element={<BudgetSummaryManagement />}
           />
-          <Route
-            path="/import-data"
-            element={<ImportDataPage />}
-          />
-
-
-          
+          <Route path="/import-data" element={<ImportDataPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
