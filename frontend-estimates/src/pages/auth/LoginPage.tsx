@@ -27,7 +27,7 @@ export const LoginPage: React.FC = () => {
           <div className="flex justify-center mb-2">
                <img
                 className=""
-                src="../../../../public/CPFF.png"
+                src="CPFF.png"
                 alt="Logo"
                 width={160}
                 height={160}

@@ -1,4 +1,4 @@
-import  { useState } from "react";
+import { useState } from "react";
 import {
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
@@ -56,18 +56,22 @@ export default function BudgetSummaryManagement() {
 
   return (
     <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-6xl mx-auto bg-white rounded-xl border border-gray-300 shadow-sm p-6 sm:p-8">
-        
+      <div className="mx-auto space-y-5">
         {/* Breadcrumb */}
-        <nav className="text-sm text-gray-600 mb-6 flex items-center gap-2 font-medium">
-          <span className="hover:text-gray-900 cursor-pointer">หน้าแรก</span>
-          <span className="text-gray-400">&gt;</span>
-          <span className="text-gray-900">สรุปข้อมูลงบประมาณ</span>
+   
+        
+          <nav className="text-sm text-gray-400 mb-4">
+          <span className="hover:text-gray-600 cursor-pointer">หน้าแรก</span>
+          <span className="mx-2">›</span>
+          <span className="text-gray-700 font-medium">สรุปข้อมูลงบประมาณ</span>
         </nav>
+
 
         {/* Header & Button */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">สรุปข้อมูลงบประมาณ</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            สรุปข้อมูลงบประมาณ
+          </h1>
           <button className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors shadow-sm">
             + เพิ่มสรุปข้อมูล
           </button>
@@ -95,11 +99,17 @@ export default function BudgetSummaryManagement() {
           <table className="w-full text-sm text-left">
             <thead>
               <tr className="bg-gray-200 border-b border-gray-300 text-gray-700">
-                <th className="px-6 py-4 font-medium text-center w-24">ลำดับ</th>
+                <th className="px-6 py-4 font-medium text-center w-24">
+                  ลำดับ
+                </th>
                 <th className="px-6 py-4 font-medium text-center">ปี</th>
                 <th className="px-6 py-4 font-medium text-center">เทอม</th>
-                <th className="px-6 py-4 font-medium text-center w-32">บันทึกไฟล์</th>
-                <th className="px-6 py-4 font-medium text-center w-48">จัดการ</th>
+                <th className="px-6 py-4 font-medium text-center w-32">
+                  บันทึกไฟล์
+                </th>
+                <th className="px-6 py-4 font-medium text-center w-48">
+                  จัดการ
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-base">
@@ -121,7 +131,9 @@ export default function BudgetSummaryManagement() {
                     <td className="px-6 py-4 text-center text-gray-800">
                       {(page - 1) * pageSize + i + 1}
                     </td>
-                    <td className="px-6 py-4 text-center text-gray-800">{row.year}</td>
+                    <td className="px-6 py-4 text-center text-gray-800">
+                      {row.year}
+                    </td>
                     <td className="px-6 py-4 text-center text-gray-800">
                       {row.semester}
                     </td>
@@ -196,7 +208,7 @@ export default function BudgetSummaryManagement() {
               ›
             </button>
           </div>
-          
+
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <select
               value={pageSize}
@@ -233,7 +245,6 @@ export default function BudgetSummaryManagement() {
             <span>Page</span>
           </div>
         </div>
-
       </div>
     </div>
   );

@@ -12,11 +12,16 @@ export default function ImportDataPage() {
         {/* กล่องที่ 1: ส่วนอัพโหลดไฟล์ */}
         <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-6 sm:p-8">
           {/* Breadcrumb */}
-          <nav className="text-sm text-gray-600 mb-8 flex items-center gap-2 font-medium">
-            <span className="hover:text-gray-900 cursor-pointer">หน้าแรก</span>
-            <span className="text-gray-400">&gt;</span>
-            <span className="text-gray-900">นำข้อมูลเข้าระบบ</span>
-          </nav>
+      
+
+
+        <nav className="text-sm text-gray-400 mb-4">
+          <span className="hover:text-gray-600 cursor-pointer">หน้าแรก</span>
+          <span className="mx-2">›</span>
+          <span className="text-gray-700 font-medium">นำข้อมูลเข้าระบบ</span>
+        </nav>
+
+          
 
           {/* หัวข้อ */}
           <h1 className="text-2xl font-bold text-gray-900 text-center mb-8">

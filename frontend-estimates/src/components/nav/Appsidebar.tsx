@@ -658,29 +658,24 @@ const AppSidebar: React.FC = () => {
             <div className="flex items-center gap-3">
               <img
                 className="dark:hidden"
-                src="../../../../public/CPFF.png"
+                src="CPFF.png"
                 alt="Logo"
                 width={50}
                 height={50}
               />
               <img
                 className="hidden dark:block"
-                src="../../../../public/CPFF.png"
+                src="CPFF.png"
                 alt="Logo"
                 width={50}
                 height={40}
               />
               <span className="text-lg font-semibold text-gray-800 dark:text-white">
-                 Financial Forecast
+                Financial Forecast
               </span>
             </div>
           ) : (
-            <img
-              src="../../../../public/CPFF.png"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
+            <img src="CPFF.png" alt="Logo" width={32} height={32} />
           )}
         </Link>
       </div>

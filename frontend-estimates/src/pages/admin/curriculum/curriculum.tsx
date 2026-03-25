@@ -157,7 +157,7 @@ export default function CurriculumManagement() {
 
   return (
     <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-6xl mx-auto">
+      <div className="mx-auto space-y-5">
         <nav className="text-sm text-gray-400 mb-4">
           <span className="hover:text-gray-600 cursor-pointer">หน้าแรก</span>
           <span className="mx-2">›</span>
