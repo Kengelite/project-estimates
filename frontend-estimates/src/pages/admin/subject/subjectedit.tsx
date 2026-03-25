@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import  { useState } from "react";
 
 // ── Types ────────────────────────────────────────────────────────────
 type Branch = "CS" | "ITII" | "GIS" | "AI" | "CY";
