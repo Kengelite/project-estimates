@@ -160,7 +160,9 @@ export default function EditSubjectDetail() {
     setData((prev) =>
       prev.map((item) => {
         if (item.branch === branch) {
+            
           const { special, ...rest } = item;
+          console.log("Removing special program from branch:", special);
           return rest;
         }
         return item;

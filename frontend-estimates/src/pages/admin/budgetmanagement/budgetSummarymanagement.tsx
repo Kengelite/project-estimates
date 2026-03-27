@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // 1. นำเข้า useNavigate
 import {
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
@@ -7,14 +8,12 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
-// 1. ปรับ Interface ให้ตรงกับข้อมูลใหม่
 interface BudgetSummaryItem {
   id: number;
   year: string;
   semester: string;
 }
 
-// 2. ข้อมูลจำลองตามภาพ
 const INITIAL_DATA: BudgetSummaryItem[] = [
   { id: 1, year: "2569", semester: "1 (ภาคต้น)" },
   { id: 2, year: "2568", semester: "-" },
@@ -23,6 +22,8 @@ const INITIAL_DATA: BudgetSummaryItem[] = [
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export default function BudgetSummaryManagement() {
+  const navigate = useNavigate(); // 2. ประกาศใช้งาน navigate
+
   const [data, setData] = useState<BudgetSummaryItem[]>(INITIAL_DATA);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -36,6 +37,11 @@ export default function BudgetSummaryManagement() {
   const handleDelete = (id: number) => {
     if (!confirm("ต้องการลบรายการนี้ใช่หรือไม่?")) return;
     setData((prev) => prev.filter((d) => d.id !== id));
+  };
+
+  // 3. ฟังก์ชันสำหรับกดดูข้อมูล (ส่งปีไปด้วยเผื่อได้ใช้ในหน้า View)
+  const handleView = (year: string) => {
+    navigate("/annual-budget-management/view", { state: { selectedYear: year } });
   };
 
   const range = (): (number | "...")[] => {
@@ -57,15 +63,13 @@ export default function BudgetSummaryManagement() {
   return (
     <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="mx-auto space-y-5">
-        {/* Breadcrumb */}
-   
         
-          <nav className="text-sm text-gray-400 mb-4">
+        {/* Breadcrumb */}
+        <nav className="text-sm text-gray-400 mb-4">
           <span className="hover:text-gray-600 cursor-pointer">หน้าแรก</span>
           <span className="mx-2">›</span>
           <span className="text-gray-700 font-medium">สรุปข้อมูลงบประมาณ</span>
         </nav>
-
 
         {/* Header & Button */}
         <div className="flex items-center justify-between mb-6">
@@ -99,44 +103,28 @@ export default function BudgetSummaryManagement() {
           <table className="w-full text-sm text-left">
             <thead>
               <tr className="bg-gray-200 border-b border-gray-300 text-gray-700">
-                <th className="px-6 py-4 font-medium text-center w-24">
-                  ลำดับ
-                </th>
+                <th className="px-6 py-4 font-medium text-center w-24">ลำดับ</th>
                 <th className="px-6 py-4 font-medium text-center">ปี</th>
                 <th className="px-6 py-4 font-medium text-center">เทอม</th>
-                <th className="px-6 py-4 font-medium text-center w-32">
-                  บันทึกไฟล์
-                </th>
-                <th className="px-6 py-4 font-medium text-center w-48">
-                  จัดการ
-                </th>
+                <th className="px-6 py-4 font-medium text-center w-32">บันทึกไฟล์</th>
+                <th className="px-6 py-4 font-medium text-center w-48">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 text-base">
+            <tbody className="divide-y divide-gray-200 text-base bg-white">
               {paginated.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="text-center py-16 text-gray-400 text-sm"
-                  >
+                  <td colSpan={5} className="text-center py-16 text-gray-400 text-sm">
                     ไม่พบข้อมูล
                   </td>
                 </tr>
               ) : (
                 paginated.map((row, i) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
+                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-center text-gray-800">
                       {(page - 1) * pageSize + i + 1}
                     </td>
-                    <td className="px-6 py-4 text-center text-gray-800">
-                      {row.year}
-                    </td>
-                    <td className="px-6 py-4 text-center text-gray-800">
-                      {row.semester}
-                    </td>
+                    <td className="px-6 py-4 text-center text-gray-800">{row.year}</td>
+                    <td className="px-6 py-4 text-center text-gray-800">{row.semester}</td>
                     <td className="px-6 py-4 text-center">
                       <button className="text-gray-600 hover:text-gray-900 transition-colors inline-flex justify-center items-center">
                         <ArrowDownTrayIcon className="w-5 h-5" />
@@ -144,7 +132,11 @@ export default function BudgetSummaryManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-4">
-                        <button className="text-blue-500 hover:text-blue-700 transition-colors">
+                        {/* 4. เพิ่ม onClick เรียกใช้ handleView */}
+                        <button 
+                          onClick={() => handleView(row.year)}
+                          className="text-blue-500 hover:text-blue-700 transition-colors"
+                        >
                           <EyeIcon className="w-5 h-5" />
                         </button>
                         <button className="text-gray-600 hover:text-gray-900 transition-colors">

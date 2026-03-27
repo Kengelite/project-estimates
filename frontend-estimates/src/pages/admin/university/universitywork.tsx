@@ -1,26 +1,22 @@
 import { useState } from "react";
-import type { CurriculumItem, CurriculumFormData } from "@/types/curriculum";
+import type { WorkItem, WorkFormData } from "@/types/work";
 import Pagination from "./components/Pagination";
-import CurriculumFormModal from "./components/CurriculumFormModal";
-import DeleteCurriculumModal from "./components/DeleteCurriculumModal";
+import WorkFormModal from "./components/WorkFormModal";
+import DeleteWorkModal from "./components/DeleteWorkModal";
 
-const INITIAL_DATA: CurriculumItem[] = [
-  { id: 1, name: "ค่าตอบแทนใช้สอยวัสดุ", bachelorNormal: "25%", bachelorSpecial: "55%", master: "80%", active: true },
-  { id: 2, name: "โครงการหลักสูตร", bachelorNormal: "10%", bachelorSpecial: "10%", master: "10%", active: true },
-  { id: 3, name: "ค่าพัฒนาหลักสูตร", bachelorNormal: "8%", bachelorSpecial: "8%", master: "5%", active: true },
-  { id: 4, name: "ค่าสอนพิเศษ", bachelorNormal: "15%", bachelorSpecial: "20%", master: "10%", active: false },
-  { id: 5, name: "ค่าวัสดุการศึกษา", bachelorNormal: "5%", bachelorSpecial: "5%", master: "3%", active: true },
-  { id: 6, name: "ค่าทดสอบและประเมินผล", bachelorNormal: "3%", bachelorSpecial: "3%", master: "2%", active: true },
-  { id: 7, name: "ค่าฝึกงานและสหกิจ", bachelorNormal: "7%", bachelorSpecial: "7%", master: "0%", active: true },
-  { id: 8, name: "ค่าพัฒนาอาจารย์", bachelorNormal: "6%", bachelorSpecial: "6%", master: "4%", active: false },
-  { id: 9, name: "ค่าจัดกิจกรรมวิชาการ", bachelorNormal: "4%", bachelorSpecial: "4%", master: "3%", active: true },
-  { id: 10, name: "ค่าบริหารจัดการหลักสูตร", bachelorNormal: "5%", bachelorSpecial: "5%", master: "5%", active: true },
+const INITIAL_DATA: WorkItem[] = [
+  { id: 1, name: "บริหารงานวิทยาลัย", bachelorNormal: "65%", bachelorSpecial: "35%", master: "10%", active: true },
+  { id: 2, name: "งานวิชาการ",        bachelorNormal: "50%", bachelorSpecial: "30%", master: "8%",  active: true },
+  { id: 3, name: "งานกิจการนักศึกษา",  bachelorNormal: "40%", bachelorSpecial: "25%", master: "5%",  active: false },
+  { id: 4, name: "งานแผนและงบประมาณ", bachelorNormal: "45%", bachelorSpecial: "28%", master: "7%",  active: true },
+  { id: 5, name: "งานบุคลากร",        bachelorNormal: "55%", bachelorSpecial: "32%", master: "9%",  active: true },
 ];
 
-const INITIAL_FORM_STATE: CurriculumFormData = {
+const INITIAL_FORM_STATE: WorkFormData = {
   name: "", bachelorNormal: "0%", bachelorSpecial: "0%", master: "0%"
 };
 
+// ── Toggle ───────────────────────────────────────────────────────────
 function Toggle({ active, onChange }: { active: boolean; onChange: () => void }) {
   return (
     <button onClick={onChange} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${active ? "bg-green-400" : "bg-gray-300"}`}>
@@ -30,17 +26,17 @@ function Toggle({ active, onChange }: { active: boolean; onChange: () => void })
   );
 }
 
-export default function CurriculumManagement() {
-  const [data, setData] = useState<CurriculumItem[]>(INITIAL_DATA);
+export default function UniversityWorkManagement() {
+  const [data, setData] = useState<WorkItem[]>(INITIAL_DATA);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   // Modal State
   const [showAdd, setShowAdd] = useState(false);
-  const [editItem, setEditItem] = useState<CurriculumItem | null>(null);
-  const [deleteItem, setDeleteItem] = useState<CurriculumItem | null>(null);
-  const [formData, setFormData] = useState<CurriculumFormData>(INITIAL_FORM_STATE);
+  const [editItem, setEditItem] = useState<WorkItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<WorkItem | null>(null);
+  const [formData, setFormData] = useState<WorkFormData>(INITIAL_FORM_STATE);
 
   const filtered = data.filter((d) => d.name.includes(search));
   const totalPages = Math.ceil(filtered.length / pageSize);
@@ -49,11 +45,11 @@ export default function CurriculumManagement() {
   const toggleActive = (id: number) =>
     setData((prev) => prev.map((d) => (d.id === id ? { ...d, active: !d.active } : d)));
 
-  const handleFormChange = (field: keyof CurriculumFormData, value: string) => {
+  const handleFormChange = (field: keyof WorkFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Add Handlers
+  // Add
   const openAdd = () => { setFormData(INITIAL_FORM_STATE); setShowAdd(true); };
   const saveAdd = () => {
     if(!formData.name.trim()) return;
@@ -61,8 +57,8 @@ export default function CurriculumManagement() {
     setShowAdd(false);
   };
 
-  // Edit Handlers
-  const openEdit = (item: CurriculumItem) => {
+  // Edit
+  const openEdit = (item: WorkItem) => {
     setEditItem(item);
     setFormData({ name: item.name, bachelorNormal: item.bachelorNormal, bachelorSpecial: item.bachelorSpecial, master: item.master });
   };
@@ -72,7 +68,7 @@ export default function CurriculumManagement() {
     setEditItem(null);
   };
 
-  // Delete Handlers
+  // Delete
   const confirmDelete = () => {
     if (!deleteItem) return;
     setData(prev => prev.filter(d => d.id !== deleteItem.id));
@@ -85,17 +81,17 @@ export default function CurriculumManagement() {
         <nav className="text-sm text-gray-400 mb-4">
           <span className="hover:text-gray-600 cursor-pointer">หน้าแรก</span>
           <span className="mx-2">›</span>
-          <span className="text-gray-700 font-medium">จัดการบริหารหลักสูตร</span>
+          <span className="text-gray-700 font-medium">จัดการบริหารงานวิทยาลัย</span>
         </nav>
 
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-xl font-bold text-gray-900">บริหารหลักสูตร</h1>
+          <h1 className="text-xl font-bold text-gray-900">บริหารงานวิทยาลัย</h1>
           <button onClick={openAdd} className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            + เพิ่มหลักสูตร
+            + เพิ่มงาน
           </button>
         </div>
 
@@ -109,7 +105,7 @@ export default function CurriculumManagement() {
               <input
                 type="text" value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="ค้นหาชื่อ..."
+                placeholder="ค้นหาชื่องานวิทยาลัย..."
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 transition-colors placeholder-gray-400"
               />
             </div>
@@ -119,8 +115,8 @@ export default function CurriculumManagement() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-100 border-b border-gray-200">
-                  {["ลำดับ", "ชื่อบริหาร", "ป.ตรี (ปกติ)", "ป.ตรี (พิเศษ)", "บัณฑิต", "สถานะ", "จัดการ"].map((h) => (
-                    <th key={h} className={`px-5 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap ${h === "ชื่อบริหาร" ? "text-left" : "text-center"}`}>
+                  {["ลำดับ", "ชื่องานวิทยาลัย", "ป.ตรี (ปกติ)", "ป.ตรี (พิเศษ)", "บัณฑิต", "สถานะ", "จัดการ"].map((h) => (
+                    <th key={h} className="text-center px-5 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -135,7 +131,7 @@ export default function CurriculumManagement() {
                   paginated.map((row, i) => (
                     <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-4 text-center text-gray-500">{(page - 1) * pageSize + i + 1}</td>
-                      <td className="px-5 py-4 text-gray-800">{row.name}</td>
+                      <td className="px-5 py-4 text-center text-gray-800 font-medium">{row.name}</td>
                       <td className="px-5 py-4 text-center text-gray-700">{row.bachelorNormal}</td>
                       <td className="px-5 py-4 text-center text-gray-700">{row.bachelorSpecial}</td>
                       <td className="px-5 py-4 text-center text-gray-700">{row.master}</td>
@@ -173,15 +169,15 @@ export default function CurriculumManagement() {
 
       {/* Modals */}
       {showAdd && (
-        <CurriculumFormModal title="เพิ่มหลักสูตร" iconColor="#3b82f6" formData={formData} onChange={handleFormChange} onClose={() => setShowAdd(false)} onSubmit={saveAdd} />
+        <WorkFormModal title="เพิ่มงานวิทยาลัย" iconColor="#3b82f6" formData={formData} onChange={handleFormChange} onClose={() => setShowAdd(false)} onSubmit={saveAdd} />
       )}
       
       {editItem && (
-        <CurriculumFormModal title="แก้ไขหลักสูตร" iconColor="#6366f1" formData={formData} onChange={handleFormChange} onClose={() => setEditItem(null)} onSubmit={saveEdit} />
+        <WorkFormModal title="แก้ไขงานวิทยาลัย" iconColor="#6366f1" formData={formData} onChange={handleFormChange} onClose={() => setEditItem(null)} onSubmit={saveEdit} />
       )}
       
       {deleteItem && (
-        <DeleteCurriculumModal item={deleteItem} onClose={() => setDeleteItem(null)} onConfirm={confirmDelete} />
+        <DeleteWorkModal item={deleteItem} onClose={() => setDeleteItem(null)} onConfirm={confirmDelete} />
       )}
     </div>
   );
