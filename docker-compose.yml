@@ -1,6 +1,7 @@
 services:
   mysql:
-    image: mysql:8.0
+    # image: mysql:8.0 ตามเครื่อง
+    image: mysql:5.7 #deploy 
     container_name: attractions_mysql
     restart: unless-stopped
     environment:
