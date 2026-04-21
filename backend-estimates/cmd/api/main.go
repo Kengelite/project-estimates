@@ -47,5 +47,12 @@ func main() {
 	if port == "" {
 		port = "3001"
 	}
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.Status(200).JSON(fiber.Map{
+			"status": "ok",
+			"message": "API is running",
+		})
+	})
+	
 	log.Fatal(app.Listen(":" + port))
 }
