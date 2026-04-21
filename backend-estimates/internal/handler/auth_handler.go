@@ -39,6 +39,7 @@ func Login(c *fiber.Ctx) error {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
     }
 
+	
     // 3. พิมพ์ Log ดูค่า (คราวนี้ Password จะไม่ว่างแล้ว)
     fmt.Printf("Login Request: Email=%s, Password=%s\n", input.Email, input.Password)
 
