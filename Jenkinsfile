@@ -54,6 +54,7 @@ VITE_API_URL=${params.API_HOST}
         stage('Deploy Stack') {
             steps {
                 script {
+                    // 1. จัดการของเก่า (Down & Volumes)
                     def downCmd = 'docker compose down'
                     if (params.CLEAN_VOLUMES) {
                         downCmd = 'docker compose down -v'
@@ -61,8 +62,14 @@ VITE_API_URL=${params.API_HOST}
                     }
                     sh downCmd
                     
-                    echo "Building and starting containers..."
-                    sh 'docker compose up -d --build'
+                    // 2. ล้างขยะและแคชที่พัง (ใส่ || true เพื่อไม่ให้ Pipeline แดงถ้าไม่มีอะไรให้ลบ)
+                    echo "Clearing Docker builder cache to prevent snapshot errors..."
+                    sh 'docker builder prune -a -f || true'
+                    
+                    // 3. สั่ง Build แบบบังคับสร้างใหม่ทั้งหมด (ไม่ง้อแคช) แล้วค่อย Up
+                    echo "Building images (no-cache) and starting containers..."
+                    sh 'docker compose build --no-cache'
+                    sh 'docker compose up -d'
                 }
             }
         }
