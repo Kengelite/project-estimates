@@ -1,21 +1,60 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { login } from "@/api/auth";
+import Swal from "sweetalert2"; // 1. Import SweetAlert2 เข้ามา
+import withReactContent from "sweetalert2-react-content";
+
+const MySwal = withReactContent(Swal); // ใช้ตัวนี้เพื่อให้รองรับ React Component ใน Alert (ถ้าต้องการ)
+
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const navigate = useNavigate(); // 2. สร้าง instance ของ navigate
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // --- ส่วนนี้คือ Logic สมมติ ---
-    if (email && password) {
-      console.log("Login Success!");
-      // 3. สั่งให้ Navigate ไปที่หน้า dashboard
+    if (!email || !password) {
+      MySwal.fire({
+        icon: "warning",
+        title: "Missing Information",
+        text: "Please fill in all fields",
+        confirmButtonColor: "#111827", // สีเทาเข้มแบบปุ่มของคุณ
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      await login(email, password); 
+      
+      await MySwal.fire({
+        icon: "success",
+        title: "Login Successful",
+        text: "Welcome back!",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
       navigate("/dashboard");
-    } else {
-      alert("Please fill in all fields");
+
+    } catch (error: any) {
+      console.error("Login Error:", error);
+      const backendError = error.response?.data?.error || "Login failed. Please try again.";
+
+      // ❌ แสดง Error Alert เมื่อ Login พลาด
+      MySwal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: backendError,
+        confirmButtonColor: "#ef4444", // สีแดง
+      });
+
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -25,24 +64,14 @@ export const LoginPage: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
           {/* Icon */}
           <div className="flex justify-center mb-2">
-               <img
-                className=""
-                src="CPFF.png"
-                alt="Logo"
-                width={160}
-                height={160}
-              />
+               <img src="CPFF.png" alt="Logo" width={160} height={160} />
           </div>
 
           {/* Header */}
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-              Sign in
-            </h1>
-            {/* <p className="text-sm text-gray-500">Continue to your account</p> */}
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Sign in</h1>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <input
@@ -52,6 +81,7 @@ export const LoginPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -63,14 +93,18 @@ export const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 rounded-lg transition-colors duration-200 mt-6"
+              disabled={isLoading}
+              className={`w-full text-white font-medium py-3 rounded-lg transition-colors duration-200 mt-6 flex justify-center items-center ${
+                isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-gray-900 hover:bg-gray-800"
+              }`}
             >
-              Sign in
+              {isLoading ? <span>Signing in...</span> : <span>Sign in</span>}
             </button>
           </form>
         </div>

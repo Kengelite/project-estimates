@@ -1,0 +1,17 @@
+สำหรับรัน project : docker-compose up -d --build 
+-> backend => localhost:30001
+-> frontend => localhost:3000
+-> mysql => localhost:8081
+
+
+อ่าน log backend 
+docker logs attractions_api
+docker logs -f attractions_api
+
+
+รัน go แยก 
+go run cmd/api/main.go
+
+
+รัน mysql แยก
+docker-compose up -d phpmyadmin

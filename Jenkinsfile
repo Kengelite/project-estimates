@@ -77,7 +77,6 @@ VITE_API_URL=${params.API_HOST}
                     sh 'docker compose ps'
                     
                     echo "Testing API connection..."
-                    // แก้ตรงนี้! ยิงไปที่หน้าแรกสุด (/) แทน /attractions
                     sh "curl -f ${params.API_HOST}/ || (echo 'API not responding' && exit 1)"
                     
                     echo " All systems GO!"
