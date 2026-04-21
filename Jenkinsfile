@@ -38,7 +38,7 @@ pipeline {
                     ]) {
                         writeFile file: '.env', text: """
 MYSQL_ROOT_PASSWORD=${env.ROOT_PASS}
-MYSQL_DATABASE=attractions_db
+MYSQL_DATABASE=estimates
 MYSQL_USER=user
 MYSQL_PASSWORD=pass
 API_PORT=3001
