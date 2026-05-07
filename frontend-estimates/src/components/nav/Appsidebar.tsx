@@ -1,31 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
-// import { useAuth } from "../../contexts/useAuth";
-// import { useLayoutEffect } from 'react';
-
 import { useNavigate } from "react-router";
 
+import { ChevronDown, ChevronUp, Ellipsis } from "lucide-react";
 import {
-  ChevronRight,
-  Ellipsis,
-  // ClipboardList
-} from "lucide-react";
-import {
-  Squares2X2Icon, // แดชบอร์ด
-  AcademicCapIcon, // จัดการหลักสูตร
-  BookOpenIcon, // จัดการรายวิชานอกคณะ
-  BanknotesIcon, // จัดการสาธารณูปโภค (ถุงเงิน)
-  BuildingLibraryIcon, // จัดการบริหารส่วนกลางวิทยาลัย
-  ClipboardDocumentCheckIcon, // จัดการบริหารงานวิทยาลัย
-  InboxStackIcon, // จัดการบริหารหลักสูตร (ไอคอนแนวกล่องเอกสาร/ชั้น)
-  DocumentCheckIcon, // สรุปงบประมาณประจำปี
-  DocumentTextIcon, // สรุปข้อมูลงบประมาณ
-  ArrowDownOnSquareIcon, // นำข้อมูลเข้าระบบ
+  Squares2X2Icon,
+  AcademicCapIcon,
+  BookOpenIcon,
+  BanknotesIcon,
+  BuildingLibraryIcon,
+  ClipboardDocumentCheckIcon,
+  InboxStackIcon,
+  DocumentCheckIcon,
+  DocumentTextIcon,
+  ArrowDownOnSquareIcon,
   ArrowRightStartOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
 import { useSidebar } from "../context/useSidebar";
-// import SidebarWidget from "./SidebarWidget";
 
 type SubItem = {
   icon: React.ReactNode;
@@ -57,6 +49,48 @@ const navItems: NavItem[] = [
     name: "แดชบอร์ด",
     path: "/dashboard",
     roles: ["admin", "superadmin", "superstaff"],
+  },
+  {
+    icon: <AcademicCapIcon className="w-5 h-5" />,
+    name: "จัดการข้อมูลทั้งหมด",
+    roles: ["admin", "superadmin", "superstaff"],
+    subItems: [
+      {
+        icon: <AcademicCapIcon className="w-4 h-4" />,
+        name: "จัดการปีการศึกษา",
+        path: "/manage/years",
+      },
+      {
+        icon: <AcademicCapIcon className="w-4 h-4" />,
+        name: "จัดการระดับปริญญา",
+        path: "/manage/degreelevels",
+      },
+      {
+        icon: <AcademicCapIcon className="w-4 h-4" />,
+        name: "จัดการโครงการระดับปริญญา",
+        path: "/manage/sections",
+      },
+      {
+        icon: <AcademicCapIcon className="w-4 h-4" />,
+        name: "จัดการภาคการศึกษา",
+        path: "/manage/semesters",
+      },
+      {
+        icon: <AcademicCapIcon className="w-4 h-4" />,
+        name: "จัดการชั้นปี",
+        path: "/manage/studentyears",
+      },
+      {
+        icon: <AcademicCapIcon className="w-4 h-4" />,
+        name: "จัดการหมวดวิชา",
+        path: "/manage/subjectcategories",
+      },
+      {
+        icon: <AcademicCapIcon className="w-4 h-4" />,
+        name: "จัดการรายวิชานอกคณะที่ถูกหัก",
+        path: "/manage/subjectoutsides",
+      },
+    ],
   },
   {
     icon: <AcademicCapIcon className="w-5 h-5" />,
@@ -115,66 +149,25 @@ const navItems: NavItem[] = [
   {
     icon: <ArrowRightStartOnRectangleIcon className="w-5 h-5" />,
     name: "ออกจากระบบ",
-    // path: "/logout", // หรือ onClick logout ก็ได้
     onClick: () => {},
     roles: ["admin", "staff", "superadmin", "superstaff"],
   },
 ];
 
-const othersItems: NavItem[] = [
-  // {
-  //   icon: <PieChartIcon />,
-  //   name: "Charts",
-  //   subItems: [
-  //     { name: "Line Chart", path: "/line-chart" },
-  //     { name: "Bar Chart", path: "/bar-chart" },
-  //   ],
-  // },
-  // {
-  //   icon: <BoxCubeIcon />,
-  //   name: "UI Elements",
-  //   subItems: [
-  //     { name: "Alerts", path: "/alerts" },
-  //     { name: "Avatar", path: "/avatars" },
-  //     { name: "Badge", path: "/badge" },
-  //     { name: "Buttons", path: "/buttons" },
-  //     { name: "Images", path: "/images" },
-  //     { name: "Videos", path: "/videos" },
-  //   ],
-  // },
-  // {
-  //   icon: <PlugInIcon />,
-  //   name: "Authentication",
-  //   subItems: [
-  //     { name: "Sign In", path: "/signin" },
-  //     { name: "Sign Up", path: "/signup" },
-  //   ],
-  // },
-];
+const othersItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
 
-  //   const { user, logout } = useAuth();
-
   const [manualOpenSubmenu, setManualOpenSubmenu] = useState<
     OpenSubmenu | "closed"
   >();
-  // const [openSubmenu, setOpenSubmenu] = useState<OpenSubmenu>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
     {},
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const isActive = useCallback(
-    (path: string) => {
-      // ใช้ exact match หรือ startsWith ตามความเหมาะสม
-      return location.pathname === path;
-    },
-    [location.pathname],
-  );
 
   const shouldShowContent = useMemo(
     () => isExpanded || isHovered || isMobileOpen,
@@ -186,63 +179,41 @@ const AppSidebar: React.FC = () => {
     [isExpanded, isHovered],
   );
 
+  const isActive = useCallback(
+    (path: string) => {
+      if (path === "/") return location.pathname === path;
+
+      return (
+        location.pathname === path ||
+        location.pathname.startsWith(`${path}/`)
+      );
+    },
+    [location.pathname],
+  );
+
   const isNavActive = useCallback(
     (nav: NavItem) => {
-      // 1. ถ้าเป็นเมนูที่มี path ตรงๆ (ไม่มี subItems)
       if (nav.path && !nav.subItems) {
-        return location.pathname === nav.path;
+        if (nav.path === "/") return location.pathname === nav.path;
+
+        return (
+          location.pathname === nav.path ||
+          location.pathname.startsWith(`${nav.path}/`)
+        );
       }
 
-      // 2. ถ้าเป็นเมนูที่มีลูก (Submenu)
       if (nav.subItems) {
-        // เช็คว่ามีลูกตัวไหนตรงกับ URL ปัจจุบันแบบเป๊ะๆ ไหม
-        return nav.subItems.some((sub) => location.pathname === sub.path);
+        return nav.subItems.some(
+          (sub) =>
+            location.pathname === sub.path ||
+            location.pathname.startsWith(`${sub.path}/`),
+        );
       }
 
       return false;
     },
     [location.pathname],
   );
-
-  // Auto-open submenu containing active route
-  // useEffect(() => {
-  //   const menus = [
-  //     { items: navItems, type: "main" as MenuType },
-  //     { items: othersItems, type: "others" as MenuType },
-  //   ];
-
-  //   for (const menu of menus) {
-  //     const matchIndex = menu.items.findIndex((nav) =>
-  //       nav.subItems?.some((subItem) => isActive(subItem.path))
-  //     );
-
-  //     if (matchIndex !== -1) {
-  //       setOpenSubmenu({ type: menu.type, index: matchIndex });
-  //       return;
-  //     }
-  //   }
-
-  //   setOpenSubmenu(null);
-  // }, [location.pathname, isActive]);
-
-  //  เมื่อใช้ React Compiler ไม่จำเป็นต้องใช้ useMemo แล้ว
-  // ระบบจะจัดการแคชค่า (Memoize) ให้โดยอัตโนมัติ
-  // const activeSubmenuFromUrl = useMemo<OpenSubmenu>(() => {
-  //   const menus = [
-  //     { items: navItems, type: "main" as MenuType },
-  //     { items: othersItems, type: "others" as MenuType },
-  //   ];
-
-  //   for (const menu of menus) {
-  //     const matchIndex = menu.items.findIndex((nav) =>
-  //       nav.subItems?.some((subItem) => isActive(subItem.path)),
-  //     );
-  //     if (matchIndex !== -1) {
-  //       return { type: menu.type, index: matchIndex };
-  //     }
-  //   }
-  //   return null;
-  // }, [isActive]);
 
   function getActiveSubmenuFromUrl(): OpenSubmenu {
     const menus = [
@@ -252,7 +223,11 @@ const AppSidebar: React.FC = () => {
 
     for (const menu of menus) {
       const matchIndex = menu.items.findIndex((nav) =>
-        nav.subItems?.some((subItem) => location.pathname === subItem.path),
+        nav.subItems?.some(
+          (subItem) =>
+            location.pathname === subItem.path ||
+            location.pathname.startsWith(`${subItem.path}/`),
+        ),
       );
 
       if (matchIndex !== -1) {
@@ -265,13 +240,11 @@ const AppSidebar: React.FC = () => {
 
   const activeSubmenuFromUrl = getActiveSubmenuFromUrl();
 
-  // รวมสถานะ: ถ้าคลิกปิดให้ปิด ถ้าไม่ได้คลิกให้เปิดตาม URL
   const openSubmenu =
     manualOpenSubmenu === "closed"
       ? null
       : (manualOpenSubmenu ?? activeSubmenuFromUrl);
 
-  // Calculate submenu heights
   useEffect(() => {
     if (!openSubmenu) return;
 
@@ -287,29 +260,14 @@ const AppSidebar: React.FC = () => {
     }
   }, [openSubmenu]);
 
-  // const handleSubmenuToggle = useCallback(
-  //   (index: number, menuType: MenuType) => {
-  //     setOpenSubmenu((prev) => {
-  //       if (prev?.type === menuType && prev?.index === index) {
-  //         return null;
-  //       }
-  //       return { type: menuType, index };
-  //     });
-  //   },
-  //   [],
-  // );
-
-  //  แก้ไขจุดที่ 214: นำ (prev) => ออก
   const handleSubmenuToggle = useCallback(
     (index: number, menuType: MenuType) => {
-      // เช็คสถานะปัจจุบันจาก openSubmenu ได้เลย
       const isOpenNow =
         openSubmenu?.type === menuType && openSubmenu?.index === index;
 
-      // สั่ง Set ค่าลงไปตรงๆ ไม่ต้องใช้ callback (prev)
       setManualOpenSubmenu(isOpenNow ? "closed" : { type: menuType, index });
     },
-    [openSubmenu], // ฟังก์ชันจะสร้างใหม่เมื่อ openSubmenu เปลี่ยนค่า
+    [openSubmenu],
   );
 
   const isSubmenuOpen = useCallback(
@@ -327,7 +285,7 @@ const AppSidebar: React.FC = () => {
         : "menu-dropdown-badge-inactive";
 
       return (
-        <span className="flex items-center gap-1 ml-auto">
+        <span className="ml-auto flex items-center gap-1">
           {subItem.new && (
             <span className={`${badgeClass} menu-dropdown-badge`}>new</span>
           )}
@@ -356,25 +314,31 @@ const AppSidebar: React.FC = () => {
           className="overflow-hidden transition-all duration-300"
           style={{ height: `${height}px` }}
         >
-          <ul className="mt-2 space-y-1 ml-9 mb-2">
+          <ul className="mt-2 mb-2 ml-9 space-y-1">
             {nav.subItems.map((subItem) => {
-              const isItemActive = isActive(subItem.path); //  เช็คตัวลูก
+              const isItemActive = isActive(subItem.path);
 
               return (
                 <li key={subItem.name}>
                   <Link
                     to={subItem.path}
-                    className={`flex items-center gap-x-3 rounded-l-lg ${
+                    className={`relative flex h-9 items-center gap-x-3 rounded-lg px-3 ${
                       isItemActive
-                        ? "bg-blue-50 text-blue-700 border-r-4 border-blue-500"
-                        : "hover:bg-gray-50 text-gray-600"
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-gray-600 hover:bg-gray-50"
                     }`}
                   >
-                    <span className="flex items-center justify-center w-5 h-5 ml-2">
+                    {isItemActive && (
+                      <span className="absolute right-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-l-lg bg-blue-500" />
+                    )}
+
+                    <span className="flex h-4 w-4 items-center justify-center flex-shrink-0">
                       {subItem.icon}
                     </span>
 
-                    <span className="flex-1 py-2 text-sm">{subItem.name}</span>
+                    <span className="flex-1 text-xs font-small whitespace-nowrap">
+                      {subItem.name}
+                    </span>
 
                     {renderBadges(subItem, isItemActive)}
                   </Link>
@@ -389,120 +353,16 @@ const AppSidebar: React.FC = () => {
   );
 
   const handleLogout = useCallback(async () => {
-    // await logout();
     navigate("/login");
   }, [navigate]);
-
-  // เรียกเมนูออกมาแสดง
-  // const renderMenuItem = (nav: NavItem, index: number, menuType: MenuType) => {
-  //   const hasSubItems = Boolean(nav.subItems);
-
-  //   const isItemActive = isNavActive(nav);
-  //   const isOpen = isSubmenuOpen(menuType, index);
-
-  //   const isActiveNow = isItemActive;
-
-  //   const iconClass = `menu-item-icon-size flex-shrink-0 ml-2 ${
-  //     isItemActive ? "menu-item-icon-active" : "menu-item-icon-inactive"
-  //   }`;
-
-  //   const menuClass = `menu-item group w-full py-2 ${
-  //     isActiveNow
-  //       ? "bg-blue-50 text-blue-700 border-r-4 rounded-l-lg border-blue-500"
-  //       : "hover:bg-gray-50 text-gray-600 rounded-l-lg"
-  //   }`;
-
-  //   // ----- มี Submenu -----
-  //   if (hasSubItems) {
-  //     return (
-  //       <>
-  //         <button
-  //           onClick={() => handleSubmenuToggle(index, menuType)}
-  //           className={`${menuClass} flex items-center justify-between w-full cursor-pointer ${
-  //             shouldCenterCollapsed ? "lg:justify-center" : ""
-  //           }`}
-  //         >
-  //           <div className="flex items-center gap-3">
-  //             <span className={iconClass}>{nav.icon}</span>
-  //             {shouldShowContent && (
-  //               <span className="menu-item-text whitespace-nowrap">
-  //                 {nav.name}
-  //               </span>
-  //             )}
-  //           </div>
-
-  //           {shouldShowContent && (
-  //             <ChevronDownIcon
-  //               className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${
-  //                 isOpen ? "rotate-180 text-brand-500" : "text-gray-400"
-  //               }`}
-  //             />
-  //           )}
-  //         </button>
-
-  //         {renderSubmenu(nav, index, menuType)}
-  //       </>
-  //     );
-  //   }
-
-  //   // ----- Action menu (logout) -----
-  //   if (nav.onClick) {
-  //     return (
-  //       <button
-  //         onClick={handleLogout}
-  //         className={`${menuClass} flex items-center gap-3 ${
-  //           shouldCenterCollapsed ? "lg:justify-center" : "lg:justify-start"
-  //         }`}
-  //       >
-  //         <span className={`${iconClass} text-red-400`}>{nav.icon}</span>
-  //         {shouldShowContent && (
-  //           <span className="menu-item-text text-red-400">{nav.name}</span>
-  //         )}
-  //       </button>
-  //     );
-  //   }
-
-  //   // ----- ปกติเป็น Link -----
-  //   if (nav.path) {
-  //     return (
-  //       <Link
-  //         to={nav.path}
-  //         className={`${menuClass} flex items-center gap-3 ${
-  //           shouldCenterCollapsed ? "lg:justify-center" : "lg:justify-start"
-  //         }`}
-  //       >
-  //         <span className={iconClass}>{nav.icon}</span>
-  //         {shouldShowContent && (
-  //           <span className="menu-item-text">{nav.name}</span>
-  //         )}
-  //       </Link>
-  //     );
-  //   }
-
-  //   return null;
-  // };
-
-  // const renderMenuItems = useCallback(
-  //   (items: NavItem[], menuType: MenuType) => (
-  //     <ul className="flex flex-col gap-1">
-  //       {items
-  //         .filter(
-  //           (nav) => !nav.roles || nav.roles.includes(user?.role as string),
-  //         )
-  //         .map((nav, index) => (
-  //           <li key={nav.name}>{renderMenuItem(nav, index, menuType)}</li>
-  //         ))}
-  //     </ul>
-  //   ),
-  //   [user?.role, openSubmenu, shouldShowContent]
-  // );
 
   const renderMenuItems = useCallback(
     (items: NavItem[], menuType: MenuType) => {
       const renderMenuItem = (nav: NavItem, index: number) => {
         const hasSubItems = Boolean(nav.subItems);
 
-        const isItemActive = isNavActive(nav);
+        // เมนูใหญ่ที่มี subItems จะไม่แสดง active bar/พื้นหลัง
+        const isItemActive = !hasSubItems && isNavActive(nav);
         const isOpen =
           openSubmenu?.type === menuType && openSubmenu?.index === index;
 
@@ -510,37 +370,43 @@ const AppSidebar: React.FC = () => {
           isItemActive ? "menu-item-icon-active" : "menu-item-icon-inactive"
         }`;
 
+        const normalMenuClass =
+          "hover:bg-gray-50 text-gray-600 rounded-l-lg";
+        const activeMenuClass =
+          "bg-blue-50 text-blue-700 border-r-4 border-blue-500 rounded-l-lg";
+
         const menuClass = `menu-item group w-full py-2 ${
-          isItemActive
-            ? "bg-blue-50 text-blue-700 border-r-4 rounded-l-lg border-blue-500"
-            : "hover:bg-gray-50 text-gray-600 rounded-l-lg"
+          isItemActive ? activeMenuClass : normalMenuClass
         }`;
 
-        // ----- มี Submenu -----
         if (hasSubItems && nav.subItems) {
           return (
             <>
               <button
+                type="button"
                 onClick={() => handleSubmenuToggle(index, menuType)}
-                className={`${menuClass} flex items-center justify-between w-full cursor-pointer ${
+                className={`menu-item group w-full py-2 text-gray-600 hover:bg-gray-50 rounded-l-lg flex items-center ${
                   shouldCenterCollapsed ? "lg:justify-center" : ""
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <span className={iconClass}>{nav.icon}</span>
-                  {shouldShowContent && (
-                    <span className="menu-item-text whitespace-nowrap">
-                      {nav.name}
-                    </span>
-                  )}
-                </div>
+                <span className="menu-item-icon-size flex-shrink-0 ml-2 text-gray-500">
+                  {nav.icon}
+                </span>
 
                 {shouldShowContent && (
-                  <ChevronRight
-                    className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${
-                      isOpen ? "rotate-180 text-brand-500" : "text-gray-400"
-                    }`}
-                  />
+                  <>
+                    <span className="menu-item-text ml-3 flex-1 whitespace-nowrap text-left text-xs">
+                      {nav.name}
+                    </span>
+
+                    <span className="mr-3 flex-shrink-0 text-gray-400">
+                      {isOpen ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </span>
+                  </>
                 )}
               </button>
 
@@ -549,7 +415,6 @@ const AppSidebar: React.FC = () => {
           );
         }
 
-        // ----- Logout -----
         if (nav.onClick) {
           return (
             <button
@@ -568,7 +433,6 @@ const AppSidebar: React.FC = () => {
           );
         }
 
-        // ----- ปกติ -----
         if (nav.path) {
           return (
             <Link
@@ -592,7 +456,6 @@ const AppSidebar: React.FC = () => {
         <ul className="flex flex-col gap-1">
           {items
             .filter(
-              // user?.role as string
               (nav) => !nav.roles || nav.roles.includes("admin" as string),
             )
             .map((nav, index) => (
@@ -602,7 +465,6 @@ const AppSidebar: React.FC = () => {
       );
     },
     [
-      //   user?.role,
       openSubmenu,
       shouldShowContent,
       shouldCenterCollapsed,
@@ -616,7 +478,7 @@ const AppSidebar: React.FC = () => {
   const renderSectionHeader = useCallback(
     (title: string) => (
       <h2
-        className={`mb-4 ml-2 text-xs font-medium uppercase flex leading-[20px] text-gray-400 dark:text-gray-500 ${
+        className={`mb-4 ml-2 flex text-xs font-medium uppercase leading-[20px] text-gray-400 dark:text-gray-500 ${
           shouldCenterCollapsed ? "lg:justify-center" : "justify-start"
         }`}
       >
@@ -641,7 +503,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-gray-100 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed mt-16 flex h-screen flex-col border-r border-gray-200 bg-white px-5 top-0 left-0 z-50 text-gray-900 transition-all duration-300 ease-in-out dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 lg:mt-0
         ${sidebarWidth}
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
@@ -649,7 +511,7 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={handleMouseLeave}
     >
       <div
-        className={`py-8 flex ${
+        className={`flex py-8 ${
           shouldCenterCollapsed ? "lg:justify-center" : "justify-start"
         }`}
       >
@@ -680,17 +542,13 @@ const AppSidebar: React.FC = () => {
         </Link>
       </div>
 
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar flex-1">
+      <div className="no-scrollbar flex flex-1 flex-col overflow-y-auto duration-300 ease-linear">
         <nav className="mb-6 flex-1">
           <div className="flex flex-col gap-6">
             <div>
               {renderSectionHeader("Menu")}
               {renderMenuItems(navItems, "main")}
             </div>
-            {/* <div>
-              {renderSectionHeader("Others")}
-              {renderMenuItems(othersItems, "others")}
-            </div> */}
           </div>
         </nav>
       </div>

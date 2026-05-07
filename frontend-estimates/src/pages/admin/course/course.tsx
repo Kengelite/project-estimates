@@ -130,11 +130,10 @@ function Badge({ text, variant }: { text: string; variant: "code" | "type" }) {
   }
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-        text === "พิเศษ"
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${text === "พิเศษ"
           ? "bg-orange-50 text-orange-600 border-orange-100"
           : "bg-gray-100 text-gray-500 border-gray-200"
-      }`}
+        }`}
     >
       {text}
     </span>
@@ -259,7 +258,7 @@ function LevelSection({
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          + เพิ่มรายวิชา
+          เพิ่มหลักสูตร
         </button>
       </div>
 
@@ -302,7 +301,7 @@ export default function CourseList() {
   };
 
   const handleAddCourse = (levelId: number) => {
-    alert(`เพิ่มหลักสูตรในระดับ ID: ${levelId}`);
+    navigate(`/courses/add?level_id=${levelId}`);
   };
 
   return (

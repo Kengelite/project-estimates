@@ -374,6 +374,10 @@ export default function SubjectManagement() {
 
   const navigate = useNavigate();
 
+  const handleAddSubject = () => {
+    navigate("/subjects/add");
+  };
+
   const filtered = courses.filter(
     (c) =>
       c.name.includes(search) ||
@@ -448,7 +452,11 @@ export default function SubjectManagement() {
         {/* Title + Add */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold text-gray-900">รายวิชานอกคณะ</h1>
-          <button className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+          <button
+            type="button"
+            onClick={handleAddSubject}
+            className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+          >
             <svg
               width="14"
               height="14"
@@ -462,7 +470,7 @@ export default function SubjectManagement() {
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            + เพิ่มรายวิชา
+            เพิ่มรายวิชา
           </button>
         </div>
 
@@ -580,8 +588,8 @@ export default function SubjectManagement() {
                           </button>
                           {/* Edit */}
                           <button className="text-gray-400 hover:text-gray-700 transition-colors p-1"
-                           onClick={() => navigate(`edit/${row.id}`)}
-                           >
+                            onClick={() => navigate(`edit/${row.id}`)}
+                          >
                             <svg
                               width="15"
                               height="15"
@@ -654,11 +662,10 @@ export default function SubjectManagement() {
                   <button
                     key={p}
                     onClick={() => setPage(p as number)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-                      page === p
-                        ? "bg-blue-500 text-white border border-blue-500"
-                        : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                    }`}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${page === p
+                      ? "bg-blue-500 text-white border border-blue-500"
+                      : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
                   >
                     {p}
                   </button>

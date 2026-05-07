@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // 1. นำเข้า useNavigate
+import { useNavigate } from "react-router-dom";
 import {
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
@@ -22,7 +22,7 @@ const INITIAL_DATA: BudgetSummaryItem[] = [
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export default function BudgetSummaryManagement() {
-  const navigate = useNavigate(); // 2. ประกาศใช้งาน navigate
+  const navigate = useNavigate();
 
   const [data, setData] = useState<BudgetSummaryItem[]>(INITIAL_DATA);
   const [search, setSearch] = useState("");
@@ -30,8 +30,10 @@ export default function BudgetSummaryManagement() {
   const [pageSize, setPageSize] = useState(10);
   const [goTo, setGoTo] = useState("");
 
-  const filtered = data.filter((d) => d.year.includes(search));
-  const totalPages = Math.ceil(filtered.length / pageSize);
+  const filtered = data.filter(
+    (d) => d.year.includes(search) || d.semester.includes(search),
+  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const handleDelete = (id: number) => {
@@ -39,202 +41,265 @@ export default function BudgetSummaryManagement() {
     setData((prev) => prev.filter((d) => d.id !== id));
   };
 
-  // 3. ฟังก์ชันสำหรับกดดูข้อมูล (ส่งปีไปด้วยเผื่อได้ใช้ในหน้า View)
   const handleView = (year: string) => {
-    navigate("/annual-budget-management/view", { state: { selectedYear: year } });
+    navigate("/annual-budget-management/view", {
+      state: { selectedYear: year },
+    });
   };
 
   const range = (): (number | "...")[] => {
-    if (totalPages <= 7)
+    if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
     const pages: (number | "...")[] = [1];
+
     if (page > 3) pages.push("...");
+
     for (
       let i = Math.max(2, page - 1);
       i <= Math.min(totalPages - 1, page + 1);
       i++
-    )
+    ) {
       pages.push(i);
+    }
+
     if (page < totalPages - 2) pages.push("...");
+
     pages.push(totalPages);
     return pages;
   };
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="mx-auto space-y-5">
-        
-        {/* Breadcrumb */}
-        <nav className="text-sm text-gray-400 mb-4">
-          <span className="hover:text-gray-600 cursor-pointer">หน้าแรก</span>
+        <nav className="mb-4 text-sm text-gray-400">
+          <span className="cursor-pointer hover:text-gray-600">หน้าแรก</span>
           <span className="mx-2">›</span>
-          <span className="text-gray-700 font-medium">สรุปข้อมูลงบประมาณ</span>
+          <span className="font-medium text-gray-700">สรุปข้อมูลงบประมาณ</span>
         </nav>
 
-        {/* Header & Button */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            สรุปข้อมูลงบประมาณ
-          </h1>
-          <button className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors shadow-sm">
-            + เพิ่มสรุปข้อมูล
+        <div className="mb-5 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-gray-900">สรุปข้อมูลงบประมาณ</h1>
+
+          <button className="flex items-center gap-1.5 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-600">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            เพิ่มสรุปข้อมูล
           </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative mb-6">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 p-4">
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="ค้นหาปี / เทอม..."
+                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400"
+              />
+            </div>
           </div>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="ค้นหาปี..."
-            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          />
-        </div>
 
-        {/* Table */}
-        <div className="border border-gray-300 rounded-t-lg overflow-hidden">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="bg-gray-200 border-b border-gray-300 text-gray-700">
-                <th className="px-6 py-4 font-medium text-center w-24">ลำดับ</th>
-                <th className="px-6 py-4 font-medium text-center">ปี</th>
-                <th className="px-6 py-4 font-medium text-center">เทอม</th>
-                <th className="px-6 py-4 font-medium text-center w-32">บันทึกไฟล์</th>
-                <th className="px-6 py-4 font-medium text-center w-48">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 text-base bg-white">
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-16 text-gray-400 text-sm">
-                    ไม่พบข้อมูล
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] table-fixed text-sm">
+              <colgroup>
+                <col className="w-[10%]" />
+                <col className="w-[20%]" />
+                <col className="w-[28%]" />
+                <col className="w-[16%]" />
+                <col className="w-[26%]" />
+              </colgroup>
+
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-100">
+                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+                    ลำดับ
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+                    ปี
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+                    เทอม
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+                    บันทึกไฟล์
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+                    จัดการ
+                  </th>
                 </tr>
-              ) : (
-                paginated.map((row, i) => (
-                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-center text-gray-800">
-                      {(page - 1) * pageSize + i + 1}
-                    </td>
-                    <td className="px-6 py-4 text-center text-gray-800">{row.year}</td>
-                    <td className="px-6 py-4 text-center text-gray-800">{row.semester}</td>
-                    <td className="px-6 py-4 text-center">
-                      <button className="text-gray-600 hover:text-gray-900 transition-colors inline-flex justify-center items-center">
-                        <ArrowDownTrayIcon className="w-5 h-5" />
-                      </button>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-4">
-                        {/* 4. เพิ่ม onClick เรียกใช้ handleView */}
-                        <button 
-                          onClick={() => handleView(row.year)}
-                          className="text-blue-500 hover:text-blue-700 transition-colors"
-                        >
-                          <EyeIcon className="w-5 h-5" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                          <PencilIcon className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(row.id)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </button>
-                      </div>
+              </thead>
+
+              <tbody className="divide-y divide-gray-100">
+                {paginated.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="py-16 text-center text-sm text-gray-400"
+                    >
+                      ไม่พบข้อมูล
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  paginated.map((row, i) => (
+                    <tr
+                      key={row.id}
+                      className="transition-colors hover:bg-blue-50/30"
+                    >
+                      <td className="px-6 py-5 text-center text-sm font-medium text-gray-500">
+                        {(page - 1) * pageSize + i + 1}
+                      </td>
 
-        {/* Pagination */}
-        <div className="flex flex-wrap items-center justify-end gap-4 mt-6">
-          <span className="text-sm text-gray-600">
-            Total {filtered.length > 0 ? filtered.length : 85} items
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-30 transition-colors"
-            >
-              ‹
-            </button>
-            {range().map((p, i) =>
-              p === "..." ? (
-                <span
-                  key={`d${i}`}
-                  className="w-8 h-8 flex items-center justify-center text-gray-400 text-sm"
+                      <td className="px-6 py-5 text-center font-medium text-gray-800">
+                        {row.year}
+                      </td>
+
+                      <td className="px-6 py-5 text-center text-gray-700">
+                        {row.semester}
+                      </td>
+
+                      <td className="px-6 py-5 text-center">
+                        <button className="text-slate-500 transition-colors hover:text-blue-500">
+                          <ArrowDownTrayIcon className="mx-auto h-5 w-5" />
+                        </button>
+                      </td>
+
+                      <td className="px-6 py-5">
+                        <div className="flex items-center justify-center gap-4">
+                          <button
+                            onClick={() => handleView(row.year)}
+                            className="text-blue-500 transition-colors hover:text-blue-700"
+                          >
+                            <EyeIcon className="h-5 w-5" />
+                          </button>
+
+                          <button className="text-slate-500 transition-colors hover:text-slate-700">
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+
+                          <button
+                            onClick={() => handleDelete(row.id)}
+                            className="text-red-500 transition-colors hover:text-red-700"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-5 py-4">
+            <span className="text-xs text-gray-400">
+              ทั้งหมด {filtered.length} รายการ
+            </span>
+
+            <div className="ml-auto flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 outline-none"
                 >
-                  ...
-                </span>
-              ) : (
+                  {PAGE_SIZE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s} / หน้า
+                    </option>
+                  ))}
+                </select>
+
+                <span>ไปที่หน้า</span>
+
+                <input
+                  type="number"
+                  value={goTo}
+                  min={1}
+                  max={totalPages}
+                  onChange={(e) => setGoTo(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const nextPage = Math.min(
+                        totalPages,
+                        Math.max(1, Number(goTo || 1)),
+                      );
+                      setPage(nextPage);
+                      setGoTo("");
+                    }
+                  }}
+                  className="w-14 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-center text-gray-700 outline-none focus:border-blue-400"
+                />
+
+                <span>หน้า</span>
+              </div>
+
+              <div className="flex items-center gap-1">
                 <button
-                  key={p}
-                  onClick={() => setPage(p as number)}
-                  className={`w-8 h-8 flex items-center justify-center rounded text-sm transition-colors ${
-                    page === p
-                      ? "bg-blue-50 border border-blue-500 text-blue-500"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                  type="button"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
                 >
-                  {p}
+                  ‹
                 </button>
-              ),
-            )}
-            <button
-              disabled={page === totalPages || totalPages === 0}
-              onClick={() => setPage((p) => p + 1)}
-              className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-30 transition-colors"
-            >
-              ›
-            </button>
-          </div>
 
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              className="border border-gray-300 rounded px-2 py-1.5 bg-white outline-none cursor-pointer"
-            >
-              {PAGE_SIZE_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s} / page
-                </option>
-              ))}
-            </select>
-          </div>
+                {range().map((p, i) =>
+                  p === "..." ? (
+                    <span
+                      key={`d${i}`}
+                      className="flex h-8 w-8 items-center justify-center text-sm text-gray-400"
+                    >
+                      ···
+                    </span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p as number)}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
+                        page === p
+                          ? "border-blue-500 bg-blue-500 text-white"
+                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
 
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span>Go to</span>
-            <input
-              type="number"
-              value={goTo}
-              min={1}
-              max={totalPages}
-              onChange={(e) => setGoTo(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  setPage(Math.min(totalPages, Math.max(1, Number(goTo))));
-                  setGoTo("");
-                }
-              }}
-              className="w-12 border border-gray-300 rounded px-2 py-1.5 text-center bg-white outline-none focus:border-blue-500"
-            />
-            <span>Page</span>
+                <button
+                  type="button"
+                  disabled={page === totalPages || totalPages === 0}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

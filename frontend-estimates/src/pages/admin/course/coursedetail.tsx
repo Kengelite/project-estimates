@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 const structureCards = [
   { label: "หมวดวิชาศึกษาทั่วไป", value: 30, highlight: false },
   { label: "หมวดวิชาเฉพาะ", value: 92, highlight: false },
@@ -18,6 +18,13 @@ export default function CourseDetail() {
     "structure",
   );
   const { id } = useParams();
+
+  const navigate = useNavigate();
+
+  const handleEditCourse = () => {
+    if (!id) return;
+    navigate(`/courses/edit/${id}`);
+  };
 
   return (
     <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
@@ -39,7 +46,11 @@ export default function CourseDetail() {
                 หลักสูตร วก.บ สาขาวิชาวิทยาการคอมพิวเตอร์
               </span>
             </nav>
-            <button className="flex items-center gap-1.5 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg transition-colors flex-shrink-0 ml-4">
+            <button
+              type="button"
+              onClick={handleEditCourse}
+              className="flex items-center gap-1.5 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg transition-colors flex-shrink-0 ml-4"
+            >
               <svg
                 width="13"
                 height="13"
@@ -108,11 +119,10 @@ export default function CourseDetail() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as "structure" | "students")}
-              className={`px-5 py-2 rounded-full text-sm font-medium border transition-colors ${
-                activeTab === tab.key
-                  ? "bg-white border-gray-300 text-gray-800 shadow-sm"
-                  : "bg-transparent border-transparent text-gray-400 hover:text-gray-600"
-              }`}
+              className={`px-5 py-2 rounded-full text-sm font-medium border transition-colors ${activeTab === tab.key
+                ? "bg-white border-gray-300 text-gray-800 shadow-sm"
+                : "bg-transparent border-transparent text-gray-400 hover:text-gray-600"
+                }`}
             >
               {tab.label}
             </button>

@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LoginPage } from "./pages/auth/LoginPage";
 import Dashboard from "./pages/admin/dashboard";
 import AppLayout from "./components/nav/AppLayout";
+import Year from "./pages/admin/year/academicyear";
+import DegreeLevel from "./pages/admin/degreelevel/degreelevel";
 import CourseList from "./pages/admin/course/course";
 import SubjectManagement from "./pages/admin/subject/subjects";
 import FundManagement from "./pages/admin/funds/fund";
@@ -13,10 +15,17 @@ import BudgetSummarySelection from "./pages/admin/budgetsummary/budgetsummary";
 import BudgetSummaryManagement from "./pages/admin/budgetmanagement/budgetSummarymanagement";
 import BudgetSummaryView from "./pages/admin/budgetmanagement/BudgetSummaryView";
 import ImportDataPage from "./pages/admin/importdataPage";
+import AddCourse from "./pages/admin/course/addcourse";
 import CourseDetail from "./pages/admin/course/coursedetail";
 import EditCourse from "./pages/admin/course/editcourse";
+import AddSubject from "./pages/admin/subject/subjectadd";
 import SubjectDetail from "./pages/admin/subject/subjectdetail";
 import EditSubjectDetail from "./pages/admin/subject/subjectedit";
+import Section from "./pages/admin/section/section";
+import Semester from "./pages/admin/semester/semester";
+import StudentYear from "./pages/admin/studentyear/studentyear";
+import SubjectOutside from "./pages/admin/subjectoutside/subjectoutside";
+import SubjectCategory from "./pages/admin/subjectcategory/subjectcategory";
 import BudgetSummaryStep1 from "./pages/admin/budgetsummary/step/BudgetSummaryStep1";
 import BudgetSummaryStep2 from "./pages/admin/budgetsummary/step/BudgetSummaryStep2";
 import BudgetSummaryStep3 from "./pages/admin/budgetsummary/step/BudgetSummaryStep3";
@@ -33,15 +42,24 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/manage/years" element={<Year />} />
+          <Route path="/manage/degreelevels" element={<DegreeLevel />} />
+          <Route path="/manage/sections" element={<Section />} />
+          <Route path="/manage/semesters" element={<Semester />} />
+          <Route path="/manage/studentyears" element={<StudentYear />} />
+          <Route path="/manage/subjectoutsides" element={<SubjectOutside />} />
+          <Route path="/manage/subjectcategories" element={<SubjectCategory />} />
           <Route path="/courses" element={<CourseList />} />
+          <Route path="/courses/add" element={<AddCourse />} />
+          <Route path="/courses/:id" element={<CourseDetail />} />
+          <Route path="/courses/edit/:id" element={<EditCourse />} />
           <Route path="/subjects" element={<SubjectManagement />} />
+          <Route path="/subjects/add" element={<AddSubject />} />
           <Route path="/subjects/:id" element={<SubjectDetail />} />
           <Route path="/subjects/edit/:id" element={<EditSubjectDetail />} />
           <Route path="/funds" element={<FundManagement />} />
           <Route path="/central" element={<CentralDeptManagement />} />
           <Route path="/curriculum" element={<CurriculumManagement />} />
-          <Route path="/courses/:id" element={<CourseDetail />} />
-          <Route path="/courses/edit/:id" element={<EditCourse />} />
           <Route
             path="/university-work"
             element={<UniversityWorkManagement />}
