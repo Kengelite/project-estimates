@@ -8,17 +8,34 @@ import (
 )
 
 func MigrateAndSeed() {
-	// 1. Auto Migrate (สร้างหรืออัปเดตตารางให้ตรงกับ Model)
 	err := DB.AutoMigrate(
 		&models.Role{},
 		&models.User{},
+		&models.Section{},
+		&models.DegreeLevel{},
+		&models.Central{},
+		&models.CentralSplit{},
+		&models.Curriculum{},
+		&models.CurriculumSplit{},
+		&models.UniversityWork{},
+		&models.UniversityWorkSplit{},
+		&models.Fund{},
+		&models.Course{},
+		&models.SubjectCategory{},
+		&models.CourseStructure{},
+		&models.SubjectOutside{},
+		&models.SubjectOutsideDeduct{},
+		&models.Semester{},
+		&models.StudentYear{},
+		&models.Year{},
+		&models.Subject{},
+		&models.CourseStudent{},
 	)
 	if err != nil {
 		log.Fatalf("❌ Migration failed: %v", err)
 	}
 	log.Println("✅ Database Migrated Successfully")
 
-	// 2. Seeding (ตั้งค่าเริ่มต้นให้ตาราง Role)
 	seedRoles()
 }
 
