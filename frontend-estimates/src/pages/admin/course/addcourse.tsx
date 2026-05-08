@@ -1,23 +1,54 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import Swal from "sweetalert2";
+import {
+    GetDataDegreeLevel,
+    GetDataSubjectCategory,
+    GetDataSubjectOutside,
+    GetDataYear,
+    AddDataCourse,
+} from "../../../fetchapi/fetch_api_admin";
+
+interface DegreeLevelOption {
+    id: string;
+    name: string;
+    shortName: string;
+    sectionId?: number;
+    sectionName?: string;
+}
+
+interface SubjectCategoryOption {
+    id: string;
+    name: string;
+}
+
+interface SubjectOutsideOption {
+    id: string;
+    subjectCode: string;
+    subjectName: string;
+}
+
+interface YearOption {
+    id: string;
+    year: string;
+}
 
 interface SubjectGroup {
-    id: number;
-    name: string;
-    credits: number;
+    id: string;
+    subjectCategoryId: string;
+    credit: string;
 }
 
 interface OutsideSubject {
-    id: number;
-    code: string;
-    name: string;
-    amount: number;
+    id: string;
+    subjectOutsideId: string;
+    amount: string;
 }
 
 interface StudentYear {
-    id: number;
-    year: number;
-    count: number;
+    id: string;
+    yearId: string;
+    studentAmount: string;
 }
 
 const inputCls =
@@ -28,6 +59,12 @@ const numberInputCls =
 
 const sectionCls =
     "rounded-[24px] border border-gray-300 bg-white px-5 py-5 shadow-sm";
+
+const selectCls =
+    "w-full h-10 rounded-lg border border-gray-200 bg-gray-50 px-4 pr-10 text-sm text-gray-800 outline-none transition-all focus:border-blue-400 focus:bg-white appearance-none";
+
+const viewBoxCls =
+    "w-full min-h-[40px] rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 flex items-center";
 
 const AddBigIcon = () => (
     <svg
@@ -40,22 +77,6 @@ const AddBigIcon = () => (
         strokeLinecap="round"
         strokeLinejoin="round"
         className="text-gray-400"
-    >
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-);
-
-const PlusIcon = () => (
-    <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
     >
         <line x1="12" y1="5" x2="12" y2="19" />
         <line x1="5" y1="12" x2="19" y2="12" />
@@ -80,6 +101,39 @@ const TrashIcon = () => (
     </svg>
 );
 
+const EditIcon = () => (
+    <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+);
+
+const SaveSmallIcon = () => (
+    <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+        <polyline points="17 21 17 13 7 13 7 21" />
+        <polyline points="7 3 7 8 15 8" />
+    </svg>
+);
+
 function SectionTitle({
     title,
     required = false,
@@ -94,123 +148,763 @@ function SectionTitle({
     );
 }
 
+function HeaderAddButton({
+    label,
+    onClick,
+}: {
+    label: string;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="inline-flex h-[40px] items-center gap-2 rounded-[14px] bg-blue-500 px-6 text-[12px] font-semibold text-white shadow-sm transition hover:bg-blue-600"
+        >
+            <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            {label}
+        </button>
+    );
+}
+
+function SelectArrow() {
+    return (
+        <svg
+            className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+        >
+            <path
+                d="M5 7.5L10 12.5L15 7.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
 function EmptyAddBox({
     title,
     description,
-    buttonText,
     onClick,
 }: {
     title: string;
     description: string;
-    buttonText: string;
     onClick: () => void;
 }) {
     return (
-        <>
-            <button
-                type="button"
-                onClick={onClick}
-                className="flex min-h-[182px] w-full flex-col items-center justify-center rounded-[14px] border border-dashed border-gray-300 bg-white px-4 py-8 text-center transition hover:bg-gray-50"
-            >
-                <AddBigIcon />
-                <p className="mt-3 text-[18px] font-medium text-gray-500">{title}</p>
-                <p className="mt-1 text-sm text-gray-400">{description}</p>
-            </button>
-
-            <button
-                type="button"
-                onClick={onClick}
-                className="mt-4 flex h-[82px] w-full items-center justify-center gap-2 rounded-[14px] border border-dashed border-gray-300 bg-white text-gray-400 transition hover:bg-gray-50"
-            >
-                <PlusIcon />
-                <span className="text-base">{buttonText}</span>
-            </button>
-        </>
+        <button
+            type="button"
+            onClick={onClick}
+            className="mt-5 flex min-h-[182px] w-full flex-col items-center justify-center rounded-[14px] border border-dashed border-gray-300 bg-white px-4 py-8 text-center transition hover:bg-gray-50"
+        >
+            <AddBigIcon />
+            <p className="mt-3 text-[18px] font-medium text-gray-500">{title}</p>
+            <p className="mt-1 text-sm text-gray-400">{description}</p>
+        </button>
     );
+}
+
+function makeLocalId() {
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function onlyNumberWithDecimal(value: string) {
+    if (value === "") return "";
+    if (!/^\d*\.?\d{0,2}$/.test(value)) return null;
+    return value;
+}
+
+function onlyInteger(value: string) {
+    if (value === "") return "";
+    if (!/^\d+$/.test(value)) return null;
+    return value;
+}
+
+function formatDegreeLabel(level: DegreeLevelOption) {
+    const sectionName = (level.sectionName || "").trim();
+    if (!sectionName) return level.name;
+    return `${level.name} (${sectionName})`;
+}
+
+function buildCourseCodePrefix(level?: DegreeLevelOption | null) {
+    if (!level?.shortName) return "";
+    return level.shortName.trim().toUpperCase();
 }
 
 export default function AddCourse() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
-    const levelId = Number(searchParams.get("level_id") || 0);
+    const degreeLevelIdFromQuery =
+        searchParams.get("degreeLevelId") || searchParams.get("level_id") || "";
 
-    const getDefaultLevel = (id: number) => {
-        switch (id) {
-            case 1:
-                return "ปริญญาตรี (ปกติ)";
-            case 2:
-                return "ปริญญาตรี (ภาคพิเศษ)";
-            case 3:
-                return "ปริญญาโท";
-            case 4:
-                return "ปริญญาเอก";
-            default:
-                return "ปริญญาตรี (ปกติ)";
-        }
-    };
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
 
-    const [level, setLevel] = useState(getDefaultLevel(levelId));
-    const [code, setCode] = useState("B.SC.");
+    const [degreeLevels, setDegreeLevels] = useState<DegreeLevelOption[]>([]);
+    const [subjectCategories, setSubjectCategories] = useState<
+        SubjectCategoryOption[]
+    >([]);
+    const [subjectOutsides, setSubjectOutsides] = useState<SubjectOutsideOption[]>(
+        [],
+    );
+    const [years, setYears] = useState<YearOption[]>([]);
+
+    const [degreeLevelId, setDegreeLevelId] = useState(degreeLevelIdFromQuery);
+    const [code, setCode] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
     const [duration, setDuration] = useState<string>("");
     const [fee, setFee] = useState<string>("");
     const [uniDeduct, setUniDeduct] = useState<string>("");
+    const [status] = useState("1");
 
     const [groups, setGroups] = useState<SubjectGroup[]>([]);
     const [outsideSubjects, setOutsideSubjects] = useState<OutsideSubject[]>([]);
     const [students, setStudents] = useState<StudentYear[]>([]);
 
+    const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+    const [editingOutsideId, setEditingOutsideId] = useState<string | null>(null);
+    const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+
+    const stripComma = (value: string) => {
+        return String(value || "").replace(/,/g, "");
+    };
+
+    const formatNumberWithComma = (value: string) => {
+        const raw = stripComma(value);
+        if (!raw) return "";
+
+        const [integerPart, decimalPart] = raw.split(".");
+        const formattedInteger = integerPart
+            ? Number(integerPart).toLocaleString("en-US")
+            : "";
+
+        return decimalPart !== undefined
+            ? `${formattedInteger}.${decimalPart}`
+            : formattedInteger;
+    };
+
+    const handleMoneyInput = (
+        value: string,
+        setter: React.Dispatch<React.SetStateAction<string>>,
+    ) => {
+        const raw = stripComma(value);
+
+        if (raw === "") {
+            setter("");
+            return;
+        }
+
+        if (!/^\d*\.?\d{0,2}$/.test(raw)) return;
+
+        setter(formatNumberWithComma(raw));
+    };
+
+    const handleIntegerCommaInput = (
+        value: string,
+        setter: React.Dispatch<React.SetStateAction<string>>,
+    ) => {
+        const raw = stripComma(value);
+
+        if (raw === "") {
+            setter("");
+            return;
+        }
+
+        if (!/^\d+$/.test(raw)) return;
+
+        setter(Number(raw).toLocaleString("en-US"));
+    };
+
+    const selectedDegreeLevel = useMemo(
+        () => degreeLevels.find((item) => item.id === degreeLevelId) || null,
+        [degreeLevels, degreeLevelId],
+    );
+
+    const courseCodePrefix = useMemo(
+        () => buildCourseCodePrefix(selectedDegreeLevel),
+        [selectedDegreeLevel],
+    );
+
+    useEffect(() => {
+        const prefix = courseCodePrefix ? `${courseCodePrefix}.` : "";
+        setCode((prev) => {
+            if (!prefix) return prev;
+            if (!prev.trim()) return prefix;
+
+            const normalized = prev.toUpperCase().replace(/[^A-Z0-9.]/g, "");
+            if (normalized.startsWith(prefix)) {
+                const suffix = normalized.slice(prefix.length).slice(0, 10);
+                return `${prefix}${suffix}`;
+            }
+
+            const suffix = normalized.replace(/\./g, "").slice(0, 10);
+            return `${prefix}${suffix}`;
+        });
+    }, [courseCodePrefix]);
+
     const totalCredits = useMemo(
-        () => groups.reduce((sum, item) => sum + (Number(item.credits) || 0), 0),
+        () =>
+            groups.reduce(
+                (sum, item) => sum + (Number(stripComma(item.credit)) || 0),
+                0,
+            ),
         [groups],
     );
 
     const totalStudents = useMemo(
-        () => students.reduce((sum, item) => sum + (Number(item.count) || 0), 0),
+        () =>
+            students.reduce(
+                (sum, item) => sum + (Number(stripComma(item.studentAmount)) || 0),
+                0,
+            ),
         [students],
     );
 
+    const loadInitialData = async () => {
+        try {
+            setLoading(true);
+
+            const [degreeRes, categoryRes, outsideRes, yearRes] = await Promise.all([
+                GetDataDegreeLevel(),
+                GetDataSubjectCategory(),
+                GetDataSubjectOutside(),
+                GetDataYear(),
+            ]);
+
+            const mappedDegreeLevels: DegreeLevelOption[] = (degreeRes || []).map(
+                (item: any) => ({
+                    id: item.id,
+                    name: item.name || item.degreeLevel || "",
+                    shortName: item.shortName || "",
+                    sectionId: Number(item.sectionId ?? item.section?.id ?? 0),
+                    sectionName:
+                        item.sectionName ||
+                        item.section?.sectionName ||
+                        item.section?.name ||
+                        "",
+                }),
+            );
+
+            const mappedCategories: SubjectCategoryOption[] = (categoryRes || []).map(
+                (item: any) => ({
+                    id: item.id,
+                    name: item.name || "",
+                }),
+            );
+
+            const mappedOutsides: SubjectOutsideOption[] = (outsideRes || []).map(
+                (item: any) => ({
+                    id: item.id,
+                    subjectCode: item.subjectCode || "",
+                    subjectName: item.subjectName || "",
+                }),
+            );
+
+            const mappedYears: YearOption[] = (yearRes || []).map((item: any) => ({
+                id: item.id,
+                year: String(item.year || ""),
+            }));
+
+            setDegreeLevels(mappedDegreeLevels);
+            setSubjectCategories(mappedCategories);
+            setSubjectOutsides(mappedOutsides);
+            setYears(mappedYears);
+
+            if (!degreeLevelIdFromQuery && mappedDegreeLevels.length > 0) {
+                setDegreeLevelId(mappedDegreeLevels[0].id);
+            }
+        } catch (error: any) {
+            await Swal.fire({
+                icon: "error",
+                title: "เกิดข้อผิดพลาด",
+                text: error || "ไม่สามารถโหลดข้อมูลเริ่มต้นได้",
+                confirmButtonColor: "#3b82f6",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadInitialData();
+    }, []);
+
+    const handleCodeChange = (value: string) => {
+        const prefix = courseCodePrefix ? `${courseCodePrefix}.` : "";
+        let next = value.toUpperCase().replace(/[^A-Z0-9.]/g, "");
+
+        if (!prefix) {
+            setCode(next.slice(0, 10));
+            return;
+        }
+
+        if (!next.startsWith(prefix)) {
+            if (next === "" || prefix.startsWith(next)) {
+                setCode(next);
+                return;
+            }
+
+            const normalizedPrefix = prefix.replace(/\./g, "");
+            const normalizedValue = next.replace(/\./g, "");
+
+            if (normalizedValue.startsWith(normalizedPrefix)) {
+                const suffix = normalizedValue
+                    .slice(normalizedPrefix.length)
+                    .slice(0, 10);
+                setCode(`${prefix}${suffix}`);
+                return;
+            }
+        }
+
+        if (next.startsWith(prefix)) {
+            const suffix = next.slice(prefix.length).slice(0, 10);
+            setCode(`${prefix}${suffix}`);
+            return;
+        }
+
+        setCode(next.slice(0, prefix.length + 10));
+    };
+
+    const confirmDelete = async (text: string) => {
+        const result = await Swal.fire({
+            icon: "warning",
+            title: "ยืนยันการลบ",
+            text,
+            showCancelButton: true,
+            confirmButtonText: "ลบ",
+            cancelButtonText: "ยกเลิก",
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#9ca3af",
+            reverseButtons: true,
+        });
+        return result.isConfirmed;
+    };
+
+    const confirmSaveItem = async (text: string) => {
+        const result = await Swal.fire({
+            icon: "question",
+            title: "ยืนยันการบันทึก",
+            text,
+            showCancelButton: true,
+            confirmButtonText: "บันทึก",
+            cancelButtonText: "ยกเลิก",
+            confirmButtonColor: "#16a34a",
+            cancelButtonColor: "#9ca3af",
+            reverseButtons: true,
+        });
+        return result.isConfirmed;
+    };
+
     const addGroup = () => {
+        const newId = makeLocalId();
         setGroups((prev) => [
             ...prev,
-            { id: Date.now(), name: "", credits: 0 },
+            { id: newId, subjectCategoryId: "", credit: "" },
         ]);
+        setEditingGroupId(newId);
     };
 
     const addOutsideSubject = () => {
+        const newId = makeLocalId();
         setOutsideSubjects((prev) => [
             ...prev,
-            { id: Date.now(), code: "", name: "", amount: 0 },
+            { id: newId, subjectOutsideId: "", amount: "" },
         ]);
+        setEditingOutsideId(newId);
     };
 
     const addStudent = () => {
+        const newId = makeLocalId();
         setStudents((prev) => [
             ...prev,
-            { id: Date.now(), year: new Date().getFullYear() + 543, count: 0 },
+            { id: newId, yearId: "", studentAmount: "" },
         ]);
+        setEditingStudentId(newId);
     };
 
-    const handleCreateCourse = () => {
+    const updateGroup = (
+        id: string,
+        field: keyof SubjectGroup,
+        value: string,
+    ) => {
+        if (field === "subjectCategoryId" && value) {
+            const duplicated = groups.some(
+                (item) => item.id !== id && item.subjectCategoryId === value,
+            );
+
+            if (duplicated) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "เลือกข้อมูลซ้ำ",
+                    text: "หมวดวิชานี้ถูกเลือกแล้ว",
+                    confirmButtonColor: "#3b82f6",
+                });
+                return;
+            }
+        }
+
+        setGroups((prev) =>
+            prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+        );
+    };
+
+    const updateOutsideSubject = (
+        id: string,
+        field: keyof OutsideSubject,
+        value: string,
+    ) => {
+        if (field === "subjectOutsideId" && value) {
+            const duplicated = outsideSubjects.some(
+                (item) => item.id !== id && item.subjectOutsideId === value,
+            );
+
+            if (duplicated) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "เลือกข้อมูลซ้ำ",
+                    text: "รายวิชานอกคณะนี้ถูกเลือกแล้ว",
+                    confirmButtonColor: "#3b82f6",
+                });
+                return;
+            }
+        }
+
+        setOutsideSubjects((prev) =>
+            prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+        );
+    };
+
+    const updateStudent = (
+        id: string,
+        field: keyof StudentYear,
+        value: string,
+    ) => {
+        if (field === "yearId" && value) {
+            const duplicated = students.some(
+                (item) => item.id !== id && item.yearId === value,
+            );
+
+            if (duplicated) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "เลือกข้อมูลซ้ำ",
+                    text: "ปีการศึกษานี้ถูกเลือกแล้ว",
+                    confirmButtonColor: "#3b82f6",
+                });
+                return;
+            }
+        }
+
+        setStudents((prev) =>
+            prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+        );
+    };
+
+    const removeGroup = async (id: string) => {
+        const ok = await confirmDelete("ต้องการลบหมวดวิชานี้ใช่หรือไม่");
+        if (!ok) return;
+
+        setGroups((prev) => prev.filter((item) => item.id !== id));
+        if (editingGroupId === id) setEditingGroupId(null);
+
+        await Swal.fire({
+            icon: "success",
+            title: "ลบข้อมูลสำเร็จ",
+            text: "ลบหมวดวิชาเรียบร้อยแล้ว",
+            confirmButtonColor: "#22c55e",
+        });
+    };
+
+    const removeOutsideSubject = async (id: string) => {
+        const ok = await confirmDelete("ต้องการลบรายวิชานอกคณะนี้ใช่หรือไม่");
+        if (!ok) return;
+
+        setOutsideSubjects((prev) => prev.filter((item) => item.id !== id));
+        if (editingOutsideId === id) setEditingOutsideId(null);
+
+        await Swal.fire({
+            icon: "success",
+            title: "ลบข้อมูลสำเร็จ",
+            text: "ลบรายวิชานอกคณะเรียบร้อยแล้ว",
+            confirmButtonColor: "#22c55e",
+        });
+    };
+
+    const removeStudent = async (id: string) => {
+        const ok = await confirmDelete("ต้องการลบข้อมูลปีการศึกษานี้ใช่หรือไม่");
+        if (!ok) return;
+
+        setStudents((prev) => prev.filter((item) => item.id !== id));
+        if (editingStudentId === id) setEditingStudentId(null);
+
+        await Swal.fire({
+            icon: "success",
+            title: "ลบข้อมูลสำเร็จ",
+            text: "ลบข้อมูลปีการศึกษาเรียบร้อยแล้ว",
+            confirmButtonColor: "#22c55e",
+        });
+    };
+
+    const saveGroupItem = async (group: SubjectGroup) => {
+        if (!group.subjectCategoryId) {
+            await Swal.fire({
+                icon: "warning",
+                title: "กรอกข้อมูลไม่ครบ",
+                text: "กรุณาเลือกหมวดวิชา",
+                confirmButtonColor: "#3b82f6",
+            });
+            return;
+        }
+
+        const ok = await confirmSaveItem("ต้องการบันทึกหมวดวิชานี้ใช่หรือไม่");
+        if (!ok) return;
+
+        setEditingGroupId(null);
+
+        await Swal.fire({
+            icon: "success",
+            title: "บันทึกข้อมูลสำเร็จ",
+            text: "บันทึกหมวดวิชาเรียบร้อยแล้ว",
+            confirmButtonColor: "#22c55e",
+        });
+    };
+
+    const saveOutsideItem = async (item: OutsideSubject) => {
+        if (!item.subjectOutsideId) {
+            await Swal.fire({
+                icon: "warning",
+                title: "กรอกข้อมูลไม่ครบ",
+                text: "กรุณาเลือกรายวิชานอกคณะ",
+                confirmButtonColor: "#3b82f6",
+            });
+            return;
+        }
+
+        const ok = await confirmSaveItem(
+            "ต้องการบันทึกรายวิชานอกคณะนี้ใช่หรือไม่",
+        );
+        if (!ok) return;
+
+        setEditingOutsideId(null);
+
+        await Swal.fire({
+            icon: "success",
+            title: "บันทึกข้อมูลสำเร็จ",
+            text: "บันทึกรายวิชานอกคณะเรียบร้อยแล้ว",
+            confirmButtonColor: "#22c55e",
+        });
+    };
+
+    const saveStudentItem = async (item: StudentYear) => {
+        if (!item.yearId) {
+            await Swal.fire({
+                icon: "warning",
+                title: "กรอกข้อมูลไม่ครบ",
+                text: "กรุณาเลือกปีการศึกษา",
+                confirmButtonColor: "#3b82f6",
+            });
+            return;
+        }
+
+        const ok = await confirmSaveItem(
+            "ต้องการบันทึกข้อมูลปีการศึกษานี้ใช่หรือไม่",
+        );
+        if (!ok) return;
+
+        setEditingStudentId(null);
+
+        await Swal.fire({
+            icon: "success",
+            title: "บันทึกข้อมูลสำเร็จ",
+            text: "บันทึกข้อมูลปีการศึกษาเรียบร้อยแล้ว",
+            confirmButtonColor: "#22c55e",
+        });
+    };
+
+    const getSubjectCategoryName = (id: string) => {
+        return subjectCategories.find((item) => item.id === id)?.name || "-";
+    };
+
+    const getSubjectOutsideLabel = (id: string) => {
+        const found = subjectOutsides.find((item) => item.id === id);
+        if (!found) return "-";
+        return `${found.subjectCode} - ${found.subjectName}`;
+    };
+
+    const getYearLabel = (id: string) => {
+        return years.find((item) => String(item.id) === id)?.year || "-";
+    };
+
+    const handleCreateCourse = async () => {
+        const prefix = courseCodePrefix ? `${courseCodePrefix}.` : "";
+        const suffixOnly =
+            prefix && code.trim().startsWith(prefix)
+                ? code.trim().slice(prefix.length)
+                : code.trim();
+
+        if (!degreeLevelId) {
+            await Swal.fire({
+                icon: "warning",
+                title: "กรอกข้อมูลไม่ครบ",
+                text: "กรุณาเลือกระดับปริญญา",
+                confirmButtonColor: "#3b82f6",
+            });
+            return;
+        }
+
+        if (!suffixOnly.trim()) {
+            await Swal.fire({
+                icon: "warning",
+                title: "กรอกข้อมูลไม่ครบ",
+                text: "กรุณากรอกรหัสหลักสูตร",
+                confirmButtonColor: "#3b82f6",
+            });
+            return;
+        }
+
+        if (!nameTh.trim()) {
+            await Swal.fire({
+                icon: "warning",
+                title: "กรอกข้อมูลไม่ครบ",
+                text: "กรุณากรอกชื่อหลักสูตรภาษาไทย",
+                confirmButtonColor: "#3b82f6",
+            });
+            return;
+        }
+
+        if (!nameEn.trim()) {
+            await Swal.fire({
+                icon: "warning",
+                title: "กรอกข้อมูลไม่ครบ",
+                text: "กรุณากรอกชื่อหลักสูตรภาษาอังกฤษ",
+                confirmButtonColor: "#3b82f6",
+            });
+            return;
+        }
+
+        for (const item of groups) {
+            if (!item.subjectCategoryId) {
+                await Swal.fire({
+                    icon: "warning",
+                    title: "กรอกข้อมูลไม่ครบ",
+                    text: "กรุณาเลือกหมวดวิชาให้ครบ",
+                    confirmButtonColor: "#3b82f6",
+                });
+                return;
+            }
+        }
+
+        for (const item of outsideSubjects) {
+            if (!item.subjectOutsideId) {
+                await Swal.fire({
+                    icon: "warning",
+                    title: "กรอกข้อมูลไม่ครบ",
+                    text: "กรุณาเลือกรายวิชานอกคณะให้ครบ",
+                    confirmButtonColor: "#3b82f6",
+                });
+                return;
+            }
+        }
+
+        for (const item of students) {
+            if (!item.yearId) {
+                await Swal.fire({
+                    icon: "warning",
+                    title: "กรอกข้อมูลไม่ครบ",
+                    text: "กรุณาเลือกปีการศึกษาให้ครบ",
+                    confirmButtonColor: "#3b82f6",
+                });
+                return;
+            }
+        }
+
         const payload = {
-            level_id: levelId,
-            level,
-            code,
-            nameTh,
-            nameEn,
-            duration,
-            fee,
-            groups,
-            uniDeduct,
-            outsideSubjects,
-            students,
+            degreeLevelId,
+            nameTh: nameTh.trim(),
+            nameEn: nameEn.trim(),
+            shortName: code.trim(),
+            studyDuration: Number(duration || 0),
+            tuitionFees: Number(stripComma(fee) || 0),
+            deductToUni: Number(stripComma(uniDeduct) || 0),
+            status,
+            structures: groups.map((item) => ({
+                subjectCategoryId: item.subjectCategoryId,
+                credit: Number(stripComma(item.credit) || 0),
+            })),
+            subjectOutsideDeducts: outsideSubjects.map((item) => ({
+                subjectOutsideId: item.subjectOutsideId,
+                amount: Number(stripComma(item.amount) || 0),
+            })),
+            students: students.map((item) => ({
+                yearId: Number(item.yearId || 0),
+                studentAmount: Number(stripComma(item.studentAmount) || 0),
+            })),
         };
 
-        console.log("create course payload:", payload);
-        // TODO: เรียก API create course ตรงนี้
+        const result = await Swal.fire({
+            icon: "question",
+            title: "ยืนยันการสร้างหลักสูตร",
+            html: `ต้องการสร้างหลักสูตร <b>${nameTh.trim()}</b> ใช่หรือไม่`,
+            showCancelButton: true,
+            confirmButtonText: "สร้างหลักสูตร",
+            cancelButtonText: "ยกเลิก",
+            confirmButtonColor: "#16a34a",
+            cancelButtonColor: "#9ca3af",
+            reverseButtons: true,
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            setSubmitting(true);
+            await AddDataCourse(payload);
+
+            await Swal.fire({
+                icon: "success",
+                title: "สำเร็จ",
+                text: "สร้างหลักสูตรเรียบร้อยแล้ว",
+                confirmButtonColor: "#22c55e",
+            });
+
+            navigate("/courses");
+        } catch (error: any) {
+            await Swal.fire({
+                icon: "error",
+                title: "เกิดข้อผิดพลาด",
+                text: error || "ไม่สามารถเพิ่มข้อมูลหลักสูตรได้",
+                confirmButtonColor: "#3b82f6",
+            });
+        } finally {
+            setSubmitting(false);
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#f7f7f7] p-4 sm:p-6">
+                <div className="mx-auto max-w-[1280px] rounded-[24px] border border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-400 shadow-sm">
+                    กำลังโหลดข้อมูลเริ่มต้น...
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#f7f7f7] p-4 sm:p-6">
@@ -219,7 +913,6 @@ export default function AddCourse() {
                     เพิ่มหลักสูตร
                 </h1>
 
-                {/* ข้อมูลพื้นฐาน */}
                 <section className={sectionCls}>
                     <SectionTitle title="ข้อมูลพื้นฐาน" required />
 
@@ -228,17 +921,21 @@ export default function AddCourse() {
                             <label className="mb-2 block text-sm font-medium text-gray-800">
                                 ระดับปริญญา <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={level}
-                                onChange={(e) => setLevel(e.target.value)}
-                                className={inputCls}
-                                disabled={levelId > 0}
-                            >
-                                <option>ปริญญาตรี (ปกติ)</option>
-                                <option>ปริญญาตรี (ภาคพิเศษ)</option>
-                                <option>ปริญญาโท</option>
-                                <option>ปริญญาเอก</option>
-                            </select>
+                            <div className="relative">
+                                <select
+                                    value={degreeLevelId}
+                                    onChange={(e) => setDegreeLevelId(e.target.value)}
+                                    className={selectCls}
+                                >
+                                    <option value="">เลือกระดับปริญญา</option>
+                                    {degreeLevels.map((item) => (
+                                        <option key={item.id} value={item.id}>
+                                            {formatDegreeLabel(item)}
+                                        </option>
+                                    ))}
+                                </select>
+                                <SelectArrow />
+                            </div>
                         </div>
 
                         <div>
@@ -248,11 +945,12 @@ export default function AddCourse() {
                             <input
                                 type="text"
                                 value={code}
-                                onChange={(e) => setCode(e.target.value)}
+                                maxLength={10}
+                                onChange={(e) => handleCodeChange(e.target.value)}
                                 className={inputCls}
                             />
                             <p className="mt-2 text-xs text-gray-400">
-                                กรุณากรอกตัวย่อสาขาด้านหลังชื่อปริญญา
+                                กรุณากรอกตัวย่อสาขาด้านหลังชื่อย่อปริญญา
                             </p>
                         </div>
 
@@ -287,9 +985,10 @@ export default function AddCourse() {
                                 ระยะเวลาการศึกษา <span className="text-red-500">*</span>
                             </label>
                             <input
-                                type="number"
+                                type="text"
                                 value={duration}
-                                onChange={(e) => setDuration(e.target.value)}
+                                maxLength={11}
+                                onChange={(e) => handleIntegerCommaInput(e.target.value, setDuration)}
                                 placeholder="เช่น 4"
                                 className={numberInputCls}
                             />
@@ -301,9 +1000,10 @@ export default function AddCourse() {
                                 <span className="text-red-500">*</span>
                             </label>
                             <input
-                                type="number"
+                                type="text"
                                 value={fee}
-                                onChange={(e) => setFee(e.target.value)}
+                                maxLength={10}
+                                onChange={(e) => handleMoneyInput(e.target.value, setFee)}
                                 placeholder="เช่น 15,000"
                                 className={numberInputCls}
                             />
@@ -311,120 +1011,180 @@ export default function AddCourse() {
                     </div>
                 </section>
 
-                {/* โครงสร้างและรายละเอียดหลักสูตร */}
                 <section className={sectionCls}>
-                    <SectionTitle title="โครงสร้างและรายละเอียดหลักสูตร" />
+                    <div className="flex items-center justify-between gap-4">
+                        <SectionTitle title="โครงสร้างและรายละเอียดหลักสูตร" />
+                        <HeaderAddButton label="เพิ่มหมวดวิชา" onClick={addGroup} />
+                    </div>
 
-                    <div className="mt-5">
-                        {groups.length === 0 ? (
-                            <EmptyAddBox
-                                title="ยังไม่มีโครงสร้างและรายละเอียดหลักสูตร"
-                                description='กดปุ่ม "เพิ่มหมวดวิชา" เพื่อเพิ่มรายละเอียดของหลักสูตร'
-                                buttonText="เพิ่มหมวดวิชา"
-                                onClick={addGroup}
-                            />
-                        ) : (
-                            <>
-                                <div className="space-y-4">
-                                    {groups.map((group, index) => (
-                                        <div
-                                            key={group.id}
-                                            className="grid grid-cols-1 gap-3 rounded-[14px] border border-gray-200 p-4 lg:grid-cols-[1fr_180px_56px]"
-                                        >
-                                            <div>
-                                                <label className="mb-2 block text-sm font-medium text-gray-800">
-                                                    หมวดวิชา {index + 1}
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={group.name}
-                                                    onChange={(e) =>
-                                                        setGroups((prev) =>
-                                                            prev.map((item) =>
-                                                                item.id === group.id
-                                                                    ? { ...item, name: e.target.value }
-                                                                    : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                    placeholder="กรอกชื่อหมวดวิชา"
-                                                    className={inputCls}
-                                                />
-                                            </div>
+                    {groups.length === 0 ? (
+                        <EmptyAddBox
+                            title="ยังไม่มีโครงสร้างและรายละเอียดหลักสูตร"
+                            description='กดปุ่ม "เพิ่มหมวดวิชา" เพื่อเพิ่มรายละเอียดของหลักสูตร'
+                            onClick={addGroup}
+                        />
+                    ) : (
+                        <div className="mt-5 space-y-4">
+                            {groups.map((group, index) => {
+                                const isEditing = editingGroupId === group.id;
 
-                                            <div>
-                                                <label className="mb-2 block text-sm font-medium text-gray-800">
-                                                    หน่วยกิต
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    value={group.credits}
-                                                    onChange={(e) =>
-                                                        setGroups((prev) =>
-                                                            prev.map((item) =>
-                                                                item.id === group.id
-                                                                    ? {
-                                                                        ...item,
-                                                                        credits: Number(e.target.value || 0),
-                                                                    }
-                                                                    : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                    className={numberInputCls}
-                                                />
-                                            </div>
+                                return (
+                                    <div
+                                        key={group.id}
+                                        className="rounded-[14px] border border-gray-200 p-4"
+                                    >
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <p className="text-sm font-semibold text-gray-800">
+                                                หมวดวิชาที่ {index + 1}
+                                            </p>
 
-                                            <div className="flex items-end">
+                                            <div className="flex items-center gap-2">
+                                                {isEditing ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => saveGroupItem(group)}
+                                                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-500 px-4 text-white transition hover:bg-blue-600"
+                                                    >
+                                                        <SaveSmallIcon />
+                                                        <span className="text-sm font-medium">บันทึก</span>
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingGroupId(group.id)}
+                                                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-orange-400 px-4 text-white transition hover:bg-orange-500"
+                                                    >
+                                                        <EditIcon />
+                                                        <span className="text-sm font-medium">แก้ไข</span>
+                                                    </button>
+                                                )}
+
                                                 <button
                                                     type="button"
-                                                    onClick={() =>
-                                                        setGroups((prev) =>
-                                                            prev.filter((item) => item.id !== group.id),
-                                                        )
-                                                    }
-                                                    className="flex h-10 w-full items-center justify-center rounded-lg border border-red-200 text-red-500 transition hover:bg-red-50"
+                                                    onClick={() => removeGroup(group.id)}
+                                                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-500 px-4 text-white transition hover:bg-red-600"
                                                 >
                                                     <TrashIcon />
+                                                    <span className="text-sm font-medium">ลบ</span>
                                                 </button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
 
-                                <button
-                                    type="button"
-                                    onClick={addGroup}
-                                    className="mt-4 flex h-[82px] w-full items-center justify-center gap-2 rounded-[14px] border border-dashed border-gray-300 bg-white text-gray-500 transition hover:bg-gray-50"
-                                >
-                                    <PlusIcon />
-                                    <span className="text-base">เพิ่มหมวดวิชา</span>
-                                </button>
-                            </>
-                        )}
+                                        {isEditing ? (
+                                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        หมวดวิชา <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <div className="relative">
+                                                        <select
+                                                            value={group.subjectCategoryId}
+                                                            onChange={(e) =>
+                                                                updateGroup(
+                                                                    group.id,
+                                                                    "subjectCategoryId",
+                                                                    e.target.value,
+                                                                )
+                                                            }
+                                                            className={selectCls}
+                                                        >
+                                                            <option value="">เลือกหมวดวิชา</option>
+                                                            {subjectCategories.map((category) => {
+                                                                const isUsedByOther = groups.some(
+                                                                    (item) =>
+                                                                        item.id !== group.id &&
+                                                                        item.subjectCategoryId === category.id,
+                                                                );
 
-                        <div className="mt-5 flex items-center justify-between rounded-[14px] bg-gray-100 px-8 py-5">
-                            <span className="text-[16px] font-medium text-gray-800">
-                                หน่วยกิตรวมตลอดหลักสูตร
+                                                                return (
+                                                                    <option
+                                                                        key={category.id}
+                                                                        value={category.id}
+                                                                        disabled={isUsedByOther}
+                                                                    >
+                                                                        {category.name}
+                                                                    </option>
+                                                                );
+                                                            })}
+                                                        </select>
+                                                        <SelectArrow />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        หน่วยกิต <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={group.credit}
+                                                        maxLength={11}
+                                                        onChange={(e) => {
+                                                            const raw = stripComma(e.target.value);
+
+                                                            if (raw === "") {
+                                                                updateGroup(group.id, "credit", "");
+                                                                return;
+                                                            }
+
+                                                            if (!/^\d+$/.test(raw)) return;
+
+                                                            updateGroup(group.id, "credit", Number(raw).toLocaleString("en-US"));
+                                                        }}
+                                                        className={numberInputCls}
+                                                        placeholder="เช่น 30"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        หมวดวิชา
+                                                    </label>
+                                                    <div className={viewBoxCls}>
+                                                        {getSubjectCategoryName(group.subjectCategoryId)}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        หน่วยกิต
+                                                    </label>
+                                                    <div className={viewBoxCls}>
+                                                        {Number(stripComma(group.credit) || 0).toLocaleString("en-US")}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    <div className="mt-5 flex items-center justify-between rounded-[14px] bg-gray-100 px-8 py-5">
+                        <span className="text-[16px] font-medium text-gray-800">
+                            หน่วยกิตรวมตลอดหลักสูตร
+                        </span>
+                        <div className="flex items-end gap-3">
+                            <span className="text-[38px] font-medium leading-none text-[#155EEF]">
+                                {totalCredits}
                             </span>
-                            <div className="flex items-end gap-3">
-                                <span className="text-[48px] font-medium leading-none text-[#155EEF]">
-                                    {totalCredits}
-                                </span>
-                                <span className="pb-1 text-[16px] text-gray-500">หน่วยกิต</span>
-                            </div>
+                            <span className="pb-1 text-[16px] text-gray-500">หน่วยกิต</span>
                         </div>
                     </div>
                 </section>
 
-                {/* ยอดเงินหักให้ภายนอกคณะ */}
                 <section className={sectionCls}>
                     <SectionTitle title="ยอดเงินหักให้ภายนอกคณะ" />
 
-                    <div className="mt-5 rounded-[14px] bg-gray-50 px-5 py-6">
-                        <div className="grid grid-cols-1 items-center gap-4 lg:grid-cols-[1fr_1fr]">
-                            <div className="text-[16px] font-medium text-gray-800">
-                                ยอดเงินที่หักให้มหาวิทยาลัย
+                    <div className="mt-5 rounded-[14px] bg-gray-100 px-5 py-5">
+                        <div className="grid grid-cols-1 items-center gap-4 lg:grid-cols-[1fr_540px]">
+                            <div>
+                                <label className="block text-[16px] font-semibold text-gray-800">
+                                    ยอดเงินที่หักให้มหาวิทยาลัย
+                                </label>
                             </div>
 
                             <div>
@@ -432,11 +1192,12 @@ export default function AddCourse() {
                                     จำนวน (บาท)
                                 </label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     value={uniDeduct}
-                                    onChange={(e) => setUniDeduct(e.target.value)}
-                                    placeholder="เช่น 2,500"
+                                    maxLength={10}
+                                    onChange={(e) => handleMoneyInput(e.target.value, setUniDeduct)}
                                     className={numberInputCls}
+                                    placeholder="เช่น 2,500"
                                 />
                             </div>
                         </div>
@@ -444,230 +1205,332 @@ export default function AddCourse() {
 
                     <div className="my-6 h-px bg-gray-200" />
 
-                    <div>
-                        <h3 className="mb-4 text-[16px] font-medium text-gray-900">
+                    <div className="flex items-center justify-between gap-4">
+                        <h3 className="text-[16px] font-semibold text-gray-800">
                             ยอดเงินที่หักให้รายวิชานอกคณะ
                         </h3>
+                        <HeaderAddButton
+                            label="เพิ่มรายวิชานอกคณะ"
+                            onClick={addOutsideSubject}
+                        />
+                    </div>
 
-                        {outsideSubjects.length === 0 ? (
+                    {outsideSubjects.length === 0 ? (
+                        <div className="mt-5">
                             <EmptyAddBox
                                 title="ยังไม่มีรายวิชานอกคณะ"
                                 description='กดปุ่ม "เพิ่มรายวิชานอกคณะ" เพื่อเพิ่มยอดเงินที่หักให้รายวิชานอกคณะ'
-                                buttonText="เพิ่มรายวิชานอกคณะ"
                                 onClick={addOutsideSubject}
                             />
-                        ) : (
-                            <>
-                                <div className="space-y-4">
-                                    {outsideSubjects.map((subject, index) => (
-                                        <div
-                                            key={subject.id}
-                                            className="grid grid-cols-1 gap-3 rounded-[14px] border border-gray-200 p-4 lg:grid-cols-[120px_1fr_180px_56px]"
-                                        >
-                                            <div>
-                                                <label className="mb-2 block text-sm font-medium text-gray-800">
-                                                    รหัสวิชา {index + 1}
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={subject.code}
-                                                    onChange={(e) =>
-                                                        setOutsideSubjects((prev) =>
-                                                            prev.map((item) =>
-                                                                item.id === subject.id
-                                                                    ? { ...item, code: e.target.value }
-                                                                    : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                    placeholder="เช่น SC"
-                                                    className={inputCls}
-                                                />
-                                            </div>
+                        </div>
+                    ) : (
+                        <div className="mt-5 space-y-4">
+                            {outsideSubjects.map((item, index) => {
+                                const isEditing = editingOutsideId === item.id;
 
-                                            <div>
-                                                <label className="mb-2 block text-sm font-medium text-gray-800">
-                                                    รายวิชา
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={subject.name}
-                                                    onChange={(e) =>
-                                                        setOutsideSubjects((prev) =>
-                                                            prev.map((item) =>
-                                                                item.id === subject.id
-                                                                    ? { ...item, name: e.target.value }
-                                                                    : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                    placeholder="กรอกรายวิชา"
-                                                    className={inputCls}
-                                                />
-                                            </div>
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className="rounded-[14px] border border-gray-200 p-4"
+                                    >
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <p className="text-sm font-semibold text-gray-800">
+                                                รายวิชานอกคณะที่ {index + 1}
+                                            </p>
 
-                                            <div>
-                                                <label className="mb-2 block text-sm font-medium text-gray-800">
-                                                    จำนวน (บาท)
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    value={subject.amount}
-                                                    onChange={(e) =>
-                                                        setOutsideSubjects((prev) =>
-                                                            prev.map((item) =>
-                                                                item.id === subject.id
-                                                                    ? {
-                                                                        ...item,
-                                                                        amount: Number(e.target.value || 0),
-                                                                    }
-                                                                    : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                    className={numberInputCls}
-                                                />
-                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {isEditing ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => saveOutsideItem(item)}
+                                                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-500 px-4 text-white transition hover:bg-blue-600"
+                                                    >
+                                                        <SaveSmallIcon />
+                                                        <span className="text-sm font-medium">บันทึก</span>
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingOutsideId(item.id)}
+                                                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-orange-400 px-4 text-white transition hover:bg-orange-500"
+                                                    >
+                                                        <EditIcon />
+                                                        <span className="text-sm font-medium">แก้ไข</span>
+                                                    </button>
+                                                )}
 
-                                            <div className="flex items-end">
                                                 <button
                                                     type="button"
-                                                    onClick={() =>
-                                                        setOutsideSubjects((prev) =>
-                                                            prev.filter((item) => item.id !== subject.id),
-                                                        )
-                                                    }
-                                                    className="flex h-10 w-full items-center justify-center rounded-lg border border-red-200 text-red-500 transition hover:bg-red-50"
+                                                    onClick={() => removeOutsideSubject(item.id)}
+                                                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-500 px-4 text-white transition hover:bg-red-600"
                                                 >
                                                     <TrashIcon />
+                                                    <span className="text-sm font-medium">ลบ</span>
                                                 </button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
 
-                                <button
-                                    type="button"
-                                    onClick={addOutsideSubject}
-                                    className="mt-4 flex h-[82px] w-full items-center justify-center gap-2 rounded-[14px] border border-dashed border-gray-300 bg-white text-gray-500 transition hover:bg-gray-50"
-                                >
-                                    <PlusIcon />
-                                    <span className="text-base">เพิ่มรายวิชานอกคณะ</span>
-                                </button>
-                            </>
-                        )}
-                    </div>
+                                        {isEditing ? (
+                                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        รายวิชานอกคณะ <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <div className="relative">
+                                                        <select
+                                                            value={item.subjectOutsideId}
+                                                            onChange={(e) =>
+                                                                updateOutsideSubject(
+                                                                    item.id,
+                                                                    "subjectOutsideId",
+                                                                    e.target.value,
+                                                                )
+                                                            }
+                                                            className={selectCls}
+                                                        >
+                                                            <option value="">เลือกรายวิชานอกคณะ</option>
+                                                            {subjectOutsides.map((outside) => {
+                                                                const isUsedByOther = outsideSubjects.some(
+                                                                    (row) =>
+                                                                        row.id !== item.id &&
+                                                                        row.subjectOutsideId === outside.id,
+                                                                );
+
+                                                                return (
+                                                                    <option
+                                                                        key={outside.id}
+                                                                        value={outside.id}
+                                                                        disabled={isUsedByOther}
+                                                                    >
+                                                                        {outside.subjectCode} - {outside.subjectName}
+                                                                    </option>
+                                                                );
+                                                            })}
+                                                        </select>
+                                                        <SelectArrow />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        จำนวนเงิน (บาท) <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={item.amount}
+                                                        maxLength={10}
+                                                        onChange={(e) => {
+                                                            const raw = stripComma(e.target.value);
+
+                                                            if (raw === "") {
+                                                                updateOutsideSubject(item.id, "amount", "");
+                                                                return;
+                                                            }
+
+                                                            if (!/^\d*\.?\d{0,2}$/.test(raw)) return;
+
+                                                            updateOutsideSubject(item.id, "amount", formatNumberWithComma(raw));
+                                                        }}
+                                                        className={numberInputCls}
+                                                        placeholder="เช่น 500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        รายวิชานอกคณะ
+                                                    </label>
+                                                    <div className={viewBoxCls}>
+                                                        {getSubjectOutsideLabel(item.subjectOutsideId)}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        จำนวนเงิน (บาท)
+                                                    </label>
+                                                    <div className={viewBoxCls}>
+                                                        {Number(stripComma(item.amount) || 0).toLocaleString("en-US")}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </section>
 
-                {/* ข้อมูลนักศึกษา */}
                 <section className={sectionCls}>
-                    <SectionTitle title="ข้อมูลนักศึกษา" />
+                    <div className="flex items-center justify-between gap-4">
+                        <SectionTitle title="ข้อมูลนักศึกษา" />
+                        <HeaderAddButton label="เพิ่มปีการศึกษา" onClick={addStudent} />
+                    </div>
 
-                    <div className="mt-5">
-                        {students.length === 0 ? (
+                    {students.length === 0 ? (
+                        <div className="mt-5">
                             <EmptyAddBox
                                 title="ยังไม่มีข้อมูลนักศึกษา"
                                 description='กดปุ่ม "เพิ่มปีการศึกษา" เพื่อเพิ่มข้อมูลของนักศึกษา'
-                                buttonText="เพิ่มปีการศึกษา"
                                 onClick={addStudent}
                             />
-                        ) : (
-                            <>
-                                <div className="space-y-4">
-                                    {students.map((student, index) => (
-                                        <div
-                                            key={student.id}
-                                            className="grid grid-cols-1 gap-3 rounded-[14px] border border-gray-200 p-4 lg:grid-cols-[1fr_1fr_56px]"
-                                        >
-                                            <div>
-                                                <label className="mb-2 block text-sm font-medium text-gray-800">
-                                                    ปีการศึกษา {index + 1}
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    value={student.year}
-                                                    onChange={(e) =>
-                                                        setStudents((prev) =>
-                                                            prev.map((item) =>
-                                                                item.id === student.id
-                                                                    ? {
-                                                                        ...item,
-                                                                        year: Number(e.target.value || 0),
-                                                                    }
-                                                                    : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                    className={numberInputCls}
-                                                />
-                                            </div>
+                        </div>
+                    ) : (
+                        <div className="mt-5 space-y-4">
+                            {students.map((student, index) => {
+                                const isEditing = editingStudentId === student.id;
 
-                                            <div>
-                                                <label className="mb-2 block text-sm font-medium text-gray-800">
-                                                    จำนวนนักศึกษา
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    value={student.count}
-                                                    onChange={(e) =>
-                                                        setStudents((prev) =>
-                                                            prev.map((item) =>
-                                                                item.id === student.id
-                                                                    ? {
-                                                                        ...item,
-                                                                        count: Number(e.target.value || 0),
-                                                                    }
-                                                                    : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                    className={numberInputCls}
-                                                />
-                                            </div>
+                                return (
+                                    <div
+                                        key={student.id}
+                                        className="rounded-[14px] border border-gray-200 p-4"
+                                    >
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <p className="text-sm font-semibold text-gray-800">
+                                                ปีการศึกษาที่ {index + 1}
+                                            </p>
 
-                                            <div className="flex items-end">
+                                            <div className="flex items-center gap-2">
+                                                {isEditing ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => saveStudentItem(student)}
+                                                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-500 px-4 text-white transition hover:bg-blue-600"
+                                                    >
+                                                        <SaveSmallIcon />
+                                                        <span className="text-sm font-medium">บันทึก</span>
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingStudentId(student.id)}
+                                                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-orange-400 px-4 text-white transition hover:bg-orange-500"
+                                                    >
+                                                        <EditIcon />
+                                                        <span className="text-sm font-medium">แก้ไข</span>
+                                                    </button>
+                                                )}
+
                                                 <button
                                                     type="button"
-                                                    onClick={() =>
-                                                        setStudents((prev) =>
-                                                            prev.filter((item) => item.id !== student.id),
-                                                        )
-                                                    }
-                                                    className="flex h-10 w-full items-center justify-center rounded-lg border border-red-200 text-red-500 transition hover:bg-red-50"
+                                                    onClick={() => removeStudent(student.id)}
+                                                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-500 px-4 text-white transition hover:bg-red-600"
                                                 >
                                                     <TrashIcon />
+                                                    <span className="text-sm font-medium">ลบ</span>
                                                 </button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
 
-                                <button
-                                    type="button"
-                                    onClick={addStudent}
-                                    className="mt-4 flex h-[82px] w-full items-center justify-center gap-2 rounded-[14px] border border-dashed border-gray-300 bg-white text-gray-500 transition hover:bg-gray-50"
-                                >
-                                    <PlusIcon />
-                                    <span className="text-base">เพิ่มปีการศึกษา</span>
-                                </button>
-                            </>
-                        )}
+                                        {isEditing ? (
+                                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        ปีการศึกษา <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <div className="relative">
+                                                        <select
+                                                            value={student.yearId}
+                                                            onChange={(e) =>
+                                                                updateStudent(
+                                                                    student.id,
+                                                                    "yearId",
+                                                                    e.target.value,
+                                                                )
+                                                            }
+                                                            className={selectCls}
+                                                        >
+                                                            <option value="">เลือกปีการศึกษา</option>
+                                                            {years.map((year) => {
+                                                                const isUsedByOther = students.some(
+                                                                    (row) =>
+                                                                        row.id !== student.id &&
+                                                                        row.yearId === year.id,
+                                                                );
 
-                        <div className="mt-5 flex items-center justify-between rounded-[14px] bg-gray-100 px-8 py-5">
-                            <span className="text-[16px] font-medium text-gray-800">
-                                จำนวนนักศึกษาทั้งหมด
+                                                                return (
+                                                                    <option
+                                                                        key={year.id}
+                                                                        value={year.id}
+                                                                        disabled={isUsedByOther}
+                                                                    >
+                                                                        {year.year}
+                                                                    </option>
+                                                                );
+                                                            })}
+                                                        </select>
+                                                        <SelectArrow />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        จำนวน(คน) <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={student.studentAmount}
+                                                        maxLength={11}
+                                                        onChange={(e) => {
+                                                            const raw = stripComma(e.target.value);
+
+                                                            if (raw === "") {
+                                                                updateStudent(student.id, "studentAmount", "");
+                                                                return;
+                                                            }
+
+                                                            if (!/^\d+$/.test(raw)) return;
+
+                                                            updateStudent(student.id, "studentAmount", Number(raw).toLocaleString("en-US"));
+                                                        }}
+                                                        className={numberInputCls}
+                                                        placeholder="เช่น 120"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        ปีการศึกษา
+                                                    </label>
+                                                    <div className={viewBoxCls}>
+                                                        {getYearLabel(student.yearId)}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                                                        จำนวน(คน)
+                                                    </label>
+                                                    <div className={viewBoxCls}>
+                                                        {Number(stripComma(student.studentAmount) || 0).toLocaleString("en-US")}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    <div className="mt-5 flex items-center justify-between rounded-[14px] bg-gray-100 px-8 py-5">
+                        <span className="text-[16px] font-medium text-gray-800">
+                            จำนวนนักศึกษาทั้งหมด
+                        </span>
+                        <div className="flex items-end gap-3">
+                            <span className="text-[38px] font-medium leading-none text-[#155EEF]">
+                                {totalStudents}
                             </span>
-                            <div className="flex items-end gap-3">
-                                <span className="text-[48px] font-medium leading-none text-[#155EEF]">
-                                    {totalStudents}
-                                </span>
-                                <span className="pb-1 text-[16px] text-gray-500">คน</span>
-                            </div>
+                            <span className="pb-1 text-[16px] text-gray-500">คน</span>
                         </div>
                     </div>
                 </section>
 
-                {/* actions */}
                 <div className="flex items-center justify-end gap-4 pb-2">
                     <button
                         type="button"
@@ -680,7 +1543,8 @@ export default function AddCourse() {
                     <button
                         type="button"
                         onClick={handleCreateCourse}
-                        className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-4 py-3 rounded-lg transition-colors"
+                        disabled={submitting}
+                        className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-70 text-white text-xs font-medium px-4 py-3 rounded-lg transition-colors"
                     >
                         <svg
                             width="16"
@@ -696,7 +1560,7 @@ export default function AddCourse() {
                             <polyline points="17 21 17 13 7 13 7 21" />
                             <polyline points="7 3 7 8 15 8" />
                         </svg>
-                        สร้างหลักสูตร
+                        {submitting ? "กำลังสร้าง..." : "สร้างหลักสูตร"}
                     </button>
                 </div>
             </div>

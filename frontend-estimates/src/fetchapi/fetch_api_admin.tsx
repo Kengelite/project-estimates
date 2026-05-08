@@ -1212,3 +1212,173 @@ export async function DeleteDataCurriculum(id: string) {
     throw message;
   }
 }
+
+/* =========================
+   COURSE
+========================= */
+
+export async function GetDataCourse() {
+  try {
+    const response = await axios.get(`${api}/api/courses`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data ?? [];
+  } catch (error: any) {
+    console.error("Error fetching courses:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลหลักสูตรได้";
+    throw message;
+  }
+}
+
+export async function GetDataCourseGrouped() {
+  try {
+    const response = await axios.get(`${api}/api/courses/grouped`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data ?? [];
+  } catch (error: any) {
+    console.error("Error fetching grouped courses:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลหลักสูตรแบบจัดกลุ่มได้";
+    throw message;
+  }
+}
+
+export async function GetDataCourseById(id: string) {
+  try {
+    const response = await axios.get(`${api}/api/courses/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching course detail:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลรายละเอียดหลักสูตรได้";
+    throw message;
+  }
+}
+
+export async function AddDataCourse(data: {
+  degreeLevelId: string;
+  nameTh: string;
+  nameEn: string;
+  shortName: string;
+  studyDuration: number;
+  tuitionFees: number;
+  deductToUni: number;
+  status: string;
+  structures: {
+    subjectCategoryId: string;
+    credit: number;
+  }[];
+  subjectOutsideDeducts: {
+    subjectOutsideId: string;
+    amount: number;
+  }[];
+  students: {
+    yearId: number;
+    studentAmount: number;
+  }[];
+}) {
+  try {
+    const response = await axios.post(`${api}/api/courses`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error adding course:", error);
+    console.error("Add course payload:", data);
+    console.error("Add course error response:", error.response?.data);
+
+    const message =
+      error.response?.data?.message || "ไม่สามารถเพิ่มข้อมูลหลักสูตรได้";
+    throw message;
+  }
+}
+
+export async function EditDataCourse(
+  id: string,
+  data: {
+    degreeLevelId: string;
+    nameTh: string;
+    nameEn: string;
+    shortName: string;
+    studyDuration: number;
+    tuitionFees: number;
+    deductToUni: number;
+    status: string;
+  },
+) {
+  try {
+    const response = await axios.put(`${api}/api/courses/${id}`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating course:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถแก้ไขข้อมูลหลักสูตรได้";
+    throw message;
+  }
+}
+
+export async function EditStatusCourse(id: string, status: string) {
+  try {
+    const response = await axios.patch(
+      `${api}/api/courses/${id}/status`,
+      { status },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating course status:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถอัปเดตสถานะหลักสูตรได้";
+    throw message;
+  }
+}
+
+export async function DeleteDataCourse(id: string) {
+  try {
+    const response = await axios.delete(`${api}/api/courses/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error deleting course:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถลบข้อมูลหลักสูตรได้";
+    throw message;
+  }
+}

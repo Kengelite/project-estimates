@@ -50,6 +50,7 @@ func main() {
 	centrals := api.Group("/centrals")
 	universityWorks := api.Group("/university-works")
 	curriculums := api.Group("/curriculums")
+	courses := api.Group("/courses")
 
 	auth.Post("/register", handler.Register)
 	auth.Post("/login", handler.Login)
@@ -119,6 +120,14 @@ func main() {
 	curriculums.Put("/:id", handler.UpdateCurriculum)
 	curriculums.Patch("/:id/status", handler.UpdateCurriculumStatus)
 	curriculums.Delete("/:id", handler.DeleteCurriculum)
+
+	courses.Get("/", handler.GetCourses)
+	courses.Get("/grouped", handler.GetCoursesGrouped)
+	courses.Get("/:id", handler.GetCourseByID)
+	courses.Post("/", handler.CreateCourse)
+	courses.Put("/:id", handler.UpdateCourse)
+	courses.Patch("/:id/status", handler.UpdateCourseStatus)
+	courses.Delete("/:id", handler.DeleteCourse)
 
 	port := os.Getenv("PORT")
 	if port == "" {
