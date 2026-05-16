@@ -23,6 +23,16 @@ const emptyForm: DegreeLevelFormData = {
   shortName: "",
 };
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+type SortKey = "name" | "sectionName" | "shortName" | "isActive";
+type SortOrder = "asc" | "desc";
+
+type SortConfig = {
+  key: SortKey;
+  order: SortOrder;
+};
+
 function SearchIcon() {
   return (
     <svg
@@ -39,6 +49,39 @@ function SearchIcon() {
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
+  );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  sortKey: SortKey;
+  sortConfig: SortConfig;
+  onSort: (key: SortKey) => void;
+  align?: "left" | "center";
+}) {
+  const isActive = sortConfig.key === sortKey;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`inline-flex items-center gap-1 text-xs font-semibold tracking-wide text-gray-600 transition-colors hover:text-blue-600 ${
+        align === "center" ? "justify-center" : "justify-start"
+      }`}
+    >
+      <span>{label}</span>
+      {isActive && (
+        <span className="text-[10px] text-gray-400">
+          {sortConfig.order === "asc" ? "▲" : "▼"}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -93,48 +136,96 @@ function StatusSwitch({
     <button
       type="button"
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+      className={`relative inline-flex h-8 w-[64px] items-center rounded-full px-1 transition-colors ${
         checked ? "bg-emerald-500" : "bg-gray-300"
       }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
+        className={`absolute text-[11px] font-bold text-white transition-all ${
+          checked ? "left-2" : "right-2"
+        }`}
+      >
+        {checked ? "เปิด" : "ปิด"}
+      </span>
+
+      <span
+        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+          checked ? "translate-x-[32px]" : "translate-x-0"
         }`}
       />
-      <span className="absolute left-2 text-[10px] font-medium text-white">
-        {checked ? "เปิด" : ""}
-      </span>
     </button>
   );
 }
 
 type DegreeLevelApiItem = {
-  id: string;
+  id?: string;
+  ID?: string;
   name?: string;
+  Name?: string;
   short_name?: string;
   shortName?: string;
-  status?: string;
-  section_id?: number;
-  sectionId?: number;
-  SectionID?: number;
+  ShortName?: string;
+  status?: string | number | boolean;
+  Status?: string | number | boolean;
+  section_id?: number | string;
+  sectionId?: number | string;
+  SectionID?: number | string;
   section?: {
-    id?: number;
+    id?: number | string;
+    ID?: number | string;
     section_name?: string;
     sectionName?: string;
+    SectionName?: string;
+    name?: string;
+    Name?: string;
   };
   Section?: {
-    id?: number;
+    id?: number | string;
+    ID?: number | string;
     section_name?: string;
     sectionName?: string;
+    SectionName?: string;
+    name?: string;
+    Name?: string;
   };
 };
 
 type SectionApiItem = {
-  id: number;
+  id?: number;
+  ID?: number;
   section_name?: string;
   sectionName?: string;
+  SectionName?: string;
+  name?: string;
+  Name?: string;
 };
+
+function pickArrayFromResponse<T>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.Data)) return response.Data;
+  if (Array.isArray(response?.items)) return response.items;
+  if (Array.isArray(response?.result)) return response.result;
+  if (Array.isArray(response?.results)) return response.results;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response?.data?.items)) return response.data.items;
+  return [];
+}
+
+function getStatusBoolean(status: any) {
+  return String(status ?? "1") === "1" || status === true;
+}
+
+function compareText(a: string, b: string) {
+  return String(a || "").localeCompare(String(b || ""), "th", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function compareBoolean(a: boolean, b: boolean) {
+  return Number(a) - Number(b);
+}
 
 export default function DegreeLevelManagement() {
   const [items, setItems] = useState<DegreeLevelItem[]>([]);
@@ -145,34 +236,69 @@ export default function DegreeLevelManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [goTo, setGoTo] = useState("");
+
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "name",
+    order: "asc",
+  });
 
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingItem, setEditingItem] = useState<DegreeLevelItem | null>(null);
-  const [deletingItem, setDeletingItem] = useState<DegreeLevelItem | null>(null);
+  const [deletingItem, setDeletingItem] = useState<DegreeLevelItem | null>(
+    null,
+  );
   const [formData, setFormData] = useState<DegreeLevelFormData>(emptyForm);
 
-  const mapDegreeLevelToItem = (item: DegreeLevelApiItem): DegreeLevelItem => ({
-    id: item.id,
-    sectionId: String(item.section_id || item.sectionId || item.SectionID || item.section?.id || item.Section?.id || ""),
+  const mapDegreeLevelToItem = (
+    item: DegreeLevelApiItem,
+  ): DegreeLevelItem => ({
+    id: String(item.id ?? item.ID ?? ""),
+    sectionId: String(
+      item.section_id ||
+        item.sectionId ||
+        item.SectionID ||
+        item.section?.id ||
+        item.section?.ID ||
+        item.Section?.id ||
+        item.Section?.ID ||
+        "",
+    ),
     sectionName:
       item.section?.section_name ||
       item.section?.sectionName ||
+      item.section?.SectionName ||
+      item.section?.name ||
+      item.section?.Name ||
       item.Section?.section_name ||
       item.Section?.sectionName ||
+      item.Section?.SectionName ||
+      item.Section?.name ||
+      item.Section?.Name ||
       "",
-    name: item.name || "",
-    shortName: item.short_name || item.shortName || "",
-    isActive: item.status === "1",
+    name: item.name || item.Name || "",
+    shortName: item.short_name || item.shortName || item.ShortName || "",
+    isActive: getStatusBoolean(item.status ?? item.Status),
   });
 
   const fetchSections = async () => {
     try {
-      const list = await GetDataSection();
+      const response = await GetDataSection();
+      const list = pickArrayFromResponse<SectionApiItem>(response);
+
       setSections(
-        (list || []).map((item: SectionApiItem) => ({
-          id: item.id,
-          section_name: item.section_name || item.sectionName || "",
-        })),
+        list
+          .map((item) => ({
+            id: Number(item.id ?? item.ID ?? 0),
+            section_name:
+              item.section_name ||
+              item.sectionName ||
+              item.SectionName ||
+              item.name ||
+              item.Name ||
+              "",
+          }))
+          .filter((item) => item.id && item.section_name),
       );
     } catch (error: any) {
       await Swal.fire({
@@ -187,9 +313,15 @@ export default function DegreeLevelManagement() {
   const fetchDegreeLevels = async () => {
     try {
       setLoading(true);
-      const list = await GetDataDegreeLevel();
 
-      setItems((list || []).map((item: DegreeLevelApiItem) => mapDegreeLevelToItem(item)));
+      const response = await GetDataDegreeLevel();
+      const list = pickArrayFromResponse<DegreeLevelApiItem>(response);
+
+      setItems(
+        list
+          .map((item) => mapDegreeLevelToItem(item))
+          .filter((item) => item.id),
+      );
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -209,6 +341,7 @@ export default function DegreeLevelManagement() {
 
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
+
     if (!keyword) return items;
 
     return items.filter(
@@ -219,90 +352,154 @@ export default function DegreeLevelManagement() {
     );
   }, [items, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const sortedItems = useMemo(() => {
+    const rows = [...filteredItems];
 
-  const paginatedItems = filteredItems.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
-  );
+    rows.sort((a, b) => {
+      let result = 0;
 
-  const resetForm = () => setFormData(emptyForm);
+      if (sortConfig.key === "name") {
+        result = compareText(a.name, b.name);
+      }
+
+      if (sortConfig.key === "sectionName") {
+        result = compareText(a.sectionName, b.sectionName);
+      }
+
+      if (sortConfig.key === "shortName") {
+        result = compareText(a.shortName, b.shortName);
+      }
+
+      if (sortConfig.key === "isActive") {
+        result = compareBoolean(a.isActive, b.isActive);
+      }
+
+      return sortConfig.order === "asc" ? result : -result;
+    });
+
+    return rows;
+  }, [filteredItems, sortConfig]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
+
+  const paginatedItems = useMemo(() => {
+    return sortedItems.slice((page - 1) * pageSize, page * pageSize);
+  }, [sortedItems, page, pageSize]);
+
+  const resetForm = () => {
+    setFormData(emptyForm);
+    setEditingItem(null);
+  };
+
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) {
+        return {
+          key,
+          order: "asc",
+        };
+      }
+
+      return {
+        key,
+        order: prev.order === "asc" ? "desc" : "asc",
+      };
+    });
+
+    setPage(1);
+  };
 
   const handleFormChange = (
     field: keyof DegreeLevelFormData,
     value: string,
   ) => {
     if (field === "name") {
-      setFormData((prev) => ({ ...prev, name: value.slice(0, 150) }));
+      setFormData((prev) => ({
+        ...prev,
+        name: value.slice(0, 150),
+      }));
       return;
     }
 
     if (field === "shortName") {
-      setFormData((prev) => ({ ...prev, shortName: value.slice(0, 10) }));
+      setFormData((prev) => ({
+        ...prev,
+        shortName: value.slice(0, 10),
+      }));
       return;
     }
 
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  const validateForm = () => {
-    if (!formData.sectionId) {
-      return "กรุณาเลือกโครงการระดับปริญญา";
-    }
-
-    if (!formData.name.trim()) {
-      return "กรุณากรอกชื่อระดับปริญญา";
-    }
-
-    if (!formData.shortName.trim()) {
-      return "กรุณากรอกชื่อย่อ";
-    }
-
-    return null;
-  };
-
-  const handleOpenAdd = () => {
-    setEditingItem(null);
+  const openAddModal = () => {
     resetForm();
     setShowFormModal(true);
   };
 
-  const handleOpenEdit = (item: DegreeLevelItem) => {
+  const openEditModal = (item: DegreeLevelItem) => {
     setEditingItem(item);
+
     setFormData({
-      sectionId: item.sectionId,
-      name: item.name,
-      shortName: item.shortName,
+      sectionId: item.sectionId || "",
+      name: item.name || "",
+      shortName: item.shortName || "",
     });
+
     setShowFormModal(true);
   };
 
-  const handleSubmit = async () => {
-    const errorMessage = validateForm();
-
-    if (errorMessage) {
-      await Swal.fire({
+  const validateForm = () => {
+    if (!formData.sectionId) {
+      Swal.fire({
         icon: "warning",
-        title: "กรอกข้อมูลไม่ครบ",
-        text: errorMessage,
+        title: "กรุณาเลือกโครงการระดับปริญญา",
         confirmButtonColor: "#3b82f6",
       });
-      return;
+      return false;
     }
 
-    const selectedSectionName =
-      sections.find((section) => String(section.id) === formData.sectionId)?.section_name || "";
+    if (!formData.name.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "กรุณากรอกชื่อระดับปริญญา",
+        confirmButtonColor: "#3b82f6",
+      });
+      return false;
+    }
+
+    if (!formData.shortName.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "กรุณากรอกชื่อย่อ",
+        confirmButtonColor: "#3b82f6",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    const section = sections.find(
+      (item) => String(item.id) === String(formData.sectionId),
+    );
 
     const confirmResult = await Swal.fire({
       icon: "question",
       title: editingItem ? "ยืนยันการแก้ไขข้อมูล" : "ยืนยันการบันทึกข้อมูล",
-      html: editingItem
-        ? `ต้องการแก้ไขระดับปริญญา <b>${formData.name}</b><br/> <b>${selectedSectionName}</b> ใช่หรือไม่`
-        : `ต้องการบันทึกระดับปริญญา <b>${formData.name}</b><br/> <b>${selectedSectionName}</b> ใช่หรือไม่`,
+      text: editingItem
+        ? `ต้องการแก้ไขระดับปริญญา ${formData.name.trim()} ใช่หรือไม่`
+        : `ต้องการบันทึกระดับปริญญา ${formData.name.trim()} ใช่หรือไม่`,
       showCancelButton: true,
       confirmButtonText: "บันทึก",
       cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#22c55e",
+      confirmButtonColor: "#16a34a",
       cancelButtonColor: "#9ca3af",
       reverseButtons: true,
     });
@@ -312,81 +509,42 @@ export default function DegreeLevelManagement() {
     try {
       setSubmitting(true);
 
+      const payload = {
+        sectionId: Number(formData.sectionId),
+        section_id: Number(formData.sectionId),
+        name: formData.name.trim(),
+        shortName: formData.shortName.trim(),
+        short_name: formData.shortName.trim(),
+        status: "1",
+      };
+
       if (editingItem) {
-        await EditDataDegreeLevel(editingItem.id, {
-          section_id: Number(formData.sectionId),
-          name: formData.name.trim(),
-          short_name: formData.shortName.trim(),
-          status: editingItem.isActive ? "1" : "0",
-        });
+        await EditDataDegreeLevel(editingItem.id, payload);
       } else {
-        await AddDataDegreeLevel({
-          section_id: Number(formData.sectionId),
-          name: formData.name.trim(),
-          short_name: formData.shortName.trim(),
-          status: "1",
-        });
+        await AddDataDegreeLevel(payload);
       }
 
       setShowFormModal(false);
-      setEditingItem(null);
       resetForm();
-      await fetchDegreeLevels();
 
       await Swal.fire({
         icon: "success",
-        title: "สำเร็จ",
+        title: "บันทึกสำเร็จ",
         text: editingItem
-          ? `แก้ไขระดับปริญญา "${formData.name}" เรียบร้อยแล้ว`
-          : `เพิ่มระดับปริญญา "${formData.name}" เรียบร้อยแล้ว`,
+          ? "แก้ไขข้อมูลระดับปริญญาเรียบร้อยแล้ว"
+          : `เพิ่มข้อมูลระดับปริญญาใน${section?.section_name || "ระบบ"}เรียบร้อยแล้ว`,
         confirmButtonColor: "#22c55e",
+        timer: 1400,
+        showConfirmButton: false,
       });
-    } catch (error: any) {
-      await Swal.fire({
-        icon: "error",
-        title: "เกิดข้อผิดพลาด",
-        text: error || "บันทึกข้อมูลไม่สำเร็จ",
-        confirmButtonColor: "#3b82f6",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
-  const handleDelete = async () => {
-    if (!deletingItem) return;
-
-    const confirmResult = await Swal.fire({
-      icon: "warning",
-      title: "ยืนยันการลบข้อมูล",
-      text: `ต้องการลบระดับปริญญา "${deletingItem.name}" ใช่หรือไม่`,
-      showCancelButton: true,
-      confirmButtonText: "ลบข้อมูล",
-      cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#9ca3af",
-      reverseButtons: true,
-    });
-
-    if (!confirmResult.isConfirmed) return;
-
-    try {
-      setSubmitting(true);
-      await DeleteDataDegreeLevel(deletingItem.id);
-      setDeletingItem(null);
       await fetchDegreeLevels();
-
-      await Swal.fire({
-        icon: "success",
-        title: "ลบสำเร็จ",
-        text: "ลบข้อมูลระดับปริญญาเรียบร้อยแล้ว",
-        confirmButtonColor: "#22c55e",
-      });
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
-        text: error || "ลบข้อมูลไม่สำเร็จ",
+        text:
+          error?.message || error || "ไม่สามารถบันทึกข้อมูลระดับปริญญาได้",
         confirmButtonColor: "#3b82f6",
       });
     } finally {
@@ -396,14 +554,13 @@ export default function DegreeLevelManagement() {
 
   const handleToggleStatus = async (item: DegreeLevelItem) => {
     const nextStatus = item.isActive ? "0" : "1";
-    const nextStatusText = nextStatus === "1" ? "เปิดใช้งาน" : "ปิดใช้งาน";
 
     const confirmResult = await Swal.fire({
       icon: "question",
       title: "ยืนยันการเปลี่ยนสถานะ",
-      text: `ต้องการ${nextStatusText}ระดับปริญญา "${item.name}" ใช่หรือไม่`,
+      html: `ต้องการ${nextStatus === "1" ? "เปิด" : "ปิด"}ใช้งานระดับปริญญา <b>${item.name}</b> ใช่หรือไม่`,
       showCancelButton: true,
-      confirmButtonText: "บันทึก",
+      confirmButtonText: "ยืนยัน",
       cancelButtonText: "ยกเลิก",
       confirmButtonColor: "#22c55e",
       cancelButtonColor: "#9ca3af",
@@ -414,33 +571,75 @@ export default function DegreeLevelManagement() {
 
     try {
       await EditStatusDegreeLevel(item.id, nextStatus);
-      await fetchDegreeLevels();
+
+      setItems((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? {
+                ...row,
+                isActive: nextStatus === "1",
+              }
+            : row,
+        ),
+      );
 
       await Swal.fire({
         icon: "success",
-        title: "สำเร็จ",
-        text: `เปลี่ยนสถานะระดับปริญญา "${item.name}" เรียบร้อยแล้ว`,
-        confirmButtonColor: "#22c55e",
+        title: "เปลี่ยนสถานะสำเร็จ",
+        timer: 1000,
+        showConfirmButton: false,
       });
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
-        text: error || "อัปเดตสถานะไม่สำเร็จ",
+        text: error?.message || error || "ไม่สามารถเปลี่ยนสถานะได้",
         confirmButtonColor: "#3b82f6",
       });
     }
   };
 
-  const handleFormKeyDown = async (
-    e: React.KeyboardEvent<HTMLDivElement>,
-  ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (!submitting) {
-        await handleSubmit();
-      }
+  const handleDelete = async () => {
+    if (!deletingItem) return;
+
+    try {
+      setSubmitting(true);
+
+      await DeleteDataDegreeLevel(deletingItem.id);
+
+      setDeletingItem(null);
+
+      await Swal.fire({
+        icon: "success",
+        title: "ลบข้อมูลสำเร็จ",
+        text: "ลบข้อมูลระดับปริญญาเรียบร้อยแล้ว",
+        confirmButtonColor: "#22c55e",
+        timer: 1400,
+        showConfirmButton: false,
+      });
+
+      await fetchDegreeLevels();
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        text: error?.message || error || "ไม่สามารถลบข้อมูลระดับปริญญาได้",
+        confirmButtonColor: "#3b82f6",
+      });
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  const handlePageSizeChange = (nextPageSize: number) => {
+    setPageSize(nextPageSize);
+    setPage(1);
+  };
+
+  const handleGoToSubmit = () => {
+    const nextPage = Math.min(totalPages, Math.max(1, Number(goTo || 1)));
+    setPage(nextPage);
+    setGoTo("");
   };
 
   return (
@@ -453,11 +652,13 @@ export default function DegreeLevelManagement() {
         </nav>
 
         <div className="mb-5 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">จัดการระดับปริญญา</h1>
+          <h1 className="text-xl font-bold text-gray-900">
+            จัดการระดับปริญญา
+          </h1>
 
           <button
             type="button"
-            onClick={handleOpenAdd}
+            onClick={openAddModal}
             className="flex items-center gap-1.5 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-600"
           >
             <svg
@@ -480,13 +681,15 @@ export default function DegreeLevelManagement() {
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-100 p-4">
             <div className="relative">
-              <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                 <SearchIcon />
               </div>
+
               <input
+                type="text"
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
+                onChange={(event) => {
+                  setSearch(event.target.value);
                   setPage(1);
                 }}
                 placeholder="ค้นหาระดับปริญญา / ชื่อย่อ / โครงการ..."
@@ -496,14 +699,14 @@ export default function DegreeLevelManagement() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] table-fixed text-sm">
+            <table className="w-full min-w-[1080px] table-fixed text-sm">
               <colgroup>
                 <col className="w-[10%]" />
                 <col className="w-[28%]" />
-                <col className="w-[24%]" />
+                <col className="w-[28%]" />
                 <col className="w-[14%]" />
-                <col className="w-[12%]" />
-                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
               </colgroup>
 
               <thead>
@@ -511,18 +714,44 @@ export default function DegreeLevelManagement() {
                   <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
                     ลำดับ
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold tracking-wide text-gray-600">
-                    ชื่อระดับปริญญา
+
+                  <th className="px-6 py-4 text-left">
+                    <SortableHeader
+                      label="ชื่อระดับปริญญา"
+                      sortKey="name"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                    />
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold tracking-wide text-gray-600">
-                    โครงการระดับปริญญา
+
+                  <th className="px-6 py-4 text-left">
+                    <SortableHeader
+                      label="โครงการระดับปริญญา"
+                      sortKey="sectionName"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                    />
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
-                    ชื่อย่อ
+
+                  <th className="px-6 py-4 text-left">
+                    <SortableHeader
+                      label="ชื่อย่อ"
+                      sortKey="shortName"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                    />
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
-                    สถานะ
+
+                  <th className="px-6 py-4 text-center">
+                    <SortableHeader
+                      label="สถานะ"
+                      sortKey="isActive"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      align="center"
+                    />
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
                     จัดการ
                   </th>
@@ -545,54 +774,52 @@ export default function DegreeLevelManagement() {
                       colSpan={6}
                       className="py-16 text-center text-sm text-gray-400"
                     >
-                      ไม่พบข้อมูลระดับปริญญา
+                      ไม่พบข้อมูล
                     </td>
                   </tr>
                 ) : (
-                  paginatedItems.map((item, index) => (
+                  paginatedItems.map((row, index) => (
                     <tr
-                      key={item.id}
+                      key={row.id}
                       className="transition-colors hover:bg-blue-50/30"
                     >
                       <td className="px-6 py-5 text-center text-sm font-medium text-gray-500">
                         {(page - 1) * pageSize + index + 1}
                       </td>
 
-                      <td className="px-6 py-5 text-left">
-                        <p className="font-medium text-gray-800">{item.name}</p>
+                      <td className="px-6 py-5 text-left font-bold text-gray-900">
+                        {row.name || "-"}
+                      </td>
+
+                      <td className="px-6 py-5 text-left font-medium text-gray-700">
+                        {row.sectionName || "-"}
                       </td>
 
                       <td className="px-6 py-5 text-left text-gray-700">
-                        {item.sectionName || "-"}
-                      </td>
-
-                      <td className="px-6 py-5 text-center text-gray-700">
-                        {item.shortName}
+                        {row.shortName || "-"}
                       </td>
 
                       <td className="px-6 py-5 text-center">
-                        <div className="flex justify-center">
-                          <StatusSwitch
-                            checked={item.isActive}
-                            onChange={() => handleToggleStatus(item)}
-                          />
-                        </div>
+                        <StatusSwitch
+                          checked={row.isActive}
+                          onChange={() => handleToggleStatus(row)}
+                        />
                       </td>
 
                       <td className="px-6 py-5">
-                        <div className="flex items-center justify-center gap-3">
+                        <div className="flex items-center justify-center gap-4 whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => handleOpenEdit(item)}
-                            disabled={submitting}
+                            onClick={() => openEditModal(row)}
+                            title="แก้ไข"
                           >
                             <EditIcon />
                           </button>
 
                           <button
                             type="button"
-                            onClick={() => setDeletingItem(item)}
-                            disabled={submitting}
+                            onClick={() => setDeletingItem(row)}
+                            title="ลบ"
                           >
                             <DeleteIcon />
                           </button>
@@ -606,44 +833,45 @@ export default function DegreeLevelManagement() {
           </div>
 
           <Pagination
-            page={page}
+            totalItems={sortedItems.length}
+            currentPage={page}
             totalPages={totalPages}
             pageSize={pageSize}
-            totalItems={filteredItems.length}
-            setPage={setPage}
-            setPageSize={setPageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            goTo={goTo}
+            onPageChange={setPage}
+            onPageSizeChange={handlePageSizeChange}
+            onGoToChange={setGoTo}
+            onGoToSubmit={handleGoToSubmit}
           />
         </div>
-
-        {showFormModal && (
-          <div onKeyDown={handleFormKeyDown}>
-            <DegreeLevelFormModal
-              title={editingItem ? "แก้ไขข้อมูลระดับปริญญา" : "เพิ่มระดับปริญญา"}
-              formData={formData}
-              sections={sections}
-              onChange={handleFormChange}
-              onClose={() => {
-                if (submitting) return;
-                setShowFormModal(false);
-                setEditingItem(null);
-                resetForm();
-              }}
-              onSubmit={handleSubmit}
-            />
-          </div>
-        )}
-
-        {deletingItem && (
-          <DeleteDegreeLevelModal
-            item={deletingItem}
-            onClose={() => {
-              if (submitting) return;
-              setDeletingItem(null);
-            }}
-            onConfirm={handleDelete}
-          />
-        )}
       </div>
+
+      {showFormModal && (
+        <DegreeLevelFormModal
+          title={editingItem ? "แก้ไขระดับปริญญา" : "เพิ่มระดับปริญญา"}
+          formData={formData}
+          sections={sections}
+          onChange={handleFormChange}
+          onClose={() => {
+            if (submitting) return;
+            setShowFormModal(false);
+            resetForm();
+          }}
+          onSubmit={handleSubmit}
+        />
+      )}
+
+      {deletingItem && (
+        <DeleteDegreeLevelModal
+          item={deletingItem}
+          onClose={() => {
+            if (submitting) return;
+            setDeletingItem(null);
+          }}
+          onConfirm={handleDelete}
+        />
+      )}
     </div>
   );
 }

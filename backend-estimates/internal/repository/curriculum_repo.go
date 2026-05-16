@@ -16,30 +16,53 @@ func NewCurriculumRepository(db *gorm.DB) *CurriculumRepository {
 
 func (r *CurriculumRepository) GetAll() ([]models.Curriculum, error) {
 	var items []models.Curriculum
+
 	err := r.DB.
-		Preload("Splits").
-		Order("created_at DESC").
+		Preload("Splits", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("curriculum_splits.deleted_at IS NULL").
+				Order("curriculum_splits.created_at ASC")
+		}).
+		Preload("Splits.SplitGroup").
+		Where("curriculums.deleted_at IS NULL").
+		Order("curriculums.created_at DESC").
 		Find(&items).Error
+
 	return items, err
 }
 
 func (r *CurriculumRepository) GetByID(id string) (*models.Curriculum, error) {
 	var item models.Curriculum
+
 	err := r.DB.
-		Preload("Splits").
-		First(&item, "id = ?", id).Error
+		Preload("Splits", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("curriculum_splits.deleted_at IS NULL").
+				Order("curriculum_splits.created_at ASC")
+		}).
+		Preload("Splits.SplitGroup").
+		Where("curriculums.deleted_at IS NULL").
+		First(&item, "curriculums.id = ?", id).Error
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &item, nil
 }
 
 func (r *CurriculumRepository) GetByName(name string) (*models.Curriculum, error) {
 	var item models.Curriculum
-	err := r.DB.Where("name = ?", name).First(&item).Error
+
+	err := r.DB.
+		Where("name = ?", name).
+		Where("deleted_at IS NULL").
+		First(&item).Error
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &item, nil
 }
 
@@ -69,7 +92,8 @@ func (r *CurriculumRepository) UpdateWithSplits(item *models.Curriculum, splits 
 			return err
 		}
 
-		if err := tx.Unscoped().
+		if err := tx.
+			Unscoped().
 			Where("curriculum_id = ?", item.ID).
 			Delete(&models.CurriculumSplit{}).Error; err != nil {
 			return err
@@ -95,7 +119,8 @@ func (r *CurriculumRepository) Update(item *models.Curriculum) error {
 
 func (r *CurriculumRepository) Delete(id string) error {
 	return r.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Unscoped().
+		if err := tx.
+			Unscoped().
 			Where("curriculum_id = ?", id).
 			Delete(&models.CurriculumSplit{}).Error; err != nil {
 			return err

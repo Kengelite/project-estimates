@@ -11,7 +11,14 @@ import {
   EditDataCentral,
   EditStatusCentral,
   DeleteDataCentral,
+  GetDataActiveSplitGroup,
 } from "../../../fetchapi/fetch_api_admin";
+
+const REQUIRED_SPLIT_GROUP_NAMES = {
+  bachelorNormal: "ป.ตรี (ปกติ)",
+  bachelorSpecial: "ป.ตรี (พิเศษ)",
+  graduate: "บัณฑิต",
+};
 
 function SearchIcon() {
   return (
@@ -75,37 +82,65 @@ function DeleteIcon() {
 function StatusSwitch({
   checked,
   onChange,
+  disabled = false,
 }: {
   checked: boolean;
   onChange: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-        checked ? "bg-emerald-500" : "bg-gray-300"
-      }`}
+      disabled={disabled}
+      className={`relative inline-flex h-8 w-[64px] shrink-0 items-center rounded-full px-1 transition-colors ${checked ? "bg-emerald-500" : "bg-gray-300"
+        } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
-      <span className="absolute left-2 text-[10px] font-medium text-white">
-        {checked ? "เปิด" : ""}
+        className={`absolute text-[11px] font-bold text-white transition-all ${checked ? "left-2" : "right-2"
+          }`}
+      >
+        {checked ? "เปิด" : "ปิด"}
       </span>
+
+      <span
+        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[32px]" : "translate-x-0"
+          }`}
+      />
     </button>
   );
 }
 
+type SplitGroupItem = {
+  id: string;
+  name: string;
+  description?: string;
+  status?: number | string;
+};
+
+type SplitGroupApiItem = {
+  id?: string;
+  name?: string;
+  description?: string;
+  status?: number | string;
+};
+
+type CentralSplitApiItem = {
+  id?: string;
+  centralId?: string;
+  splitGroupId?: string;
+  splitGroup?: SplitGroupApiItem;
+  pctSplit?: number | string;
+};
+
 type CentralApiItem = {
   id: string;
   name?: string;
-  status?: string;
-  bachelorNormal?: number;
-  bachelorSpecial?: number;
-  graduate?: number;
+  status?: string | number;
+  bachelorNormal?: number | string;
+  bachelorSpecial?: number | string;
+  graduate?: number | string;
+  splits?: CentralSplitApiItem[];
 };
 
 const emptyForm: DeptFormData = {
@@ -115,8 +150,103 @@ const emptyForm: DeptFormData = {
   graduate: "0",
 };
 
+function toNumber(value: any) {
+  if (value === null || value === undefined || value === "") return 0;
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const cleaned = String(value).replace(/,/g, "").replace("%", "").trim();
+  const number = Number(cleaned);
+
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatPercent(value: any) {
+  return `${toNumber(value).toFixed(2)}%`;
+}
+
+function normalizeText(value: any) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
+function normalizeSplitGroupName(value: any) {
+  const text = normalizeText(value);
+
+  if (
+    text === "bachelor_normal" ||
+    text === "bachelornormal" ||
+    text === "normal" ||
+    text === "ปกติ" ||
+    text === "ตรีปกติ" ||
+    text === "ป.ตรีปกติ" ||
+    text === "ป.ตรี(ปกติ)"
+  ) {
+    return REQUIRED_SPLIT_GROUP_NAMES.bachelorNormal;
+  }
+
+  if (
+    text === "bachelor_special" ||
+    text === "bachelorspecial" ||
+    text === "special" ||
+    text === "พิเศษ" ||
+    text === "ตรีพิเศษ" ||
+    text === "ป.ตรีพิเศษ" ||
+    text === "ป.ตรี(พิเศษ)"
+  ) {
+    return REQUIRED_SPLIT_GROUP_NAMES.bachelorSpecial;
+  }
+
+  if (
+    text === "graduate" ||
+    text === "grad" ||
+    text === "บัณฑิต" ||
+    text === "บัณฑิตศึกษา" ||
+    text === "ป.โท" ||
+    text === "ป.เอก"
+  ) {
+    return REQUIRED_SPLIT_GROUP_NAMES.graduate;
+  }
+
+  return String(value ?? "").trim();
+}
+
+function getSplitPercentByName(
+  item: CentralApiItem,
+  targetName: string,
+  fallbackValue: any,
+) {
+  const target = normalizeSplitGroupName(targetName);
+
+  const matched = (item.splits || []).find((split) => {
+    const splitName = normalizeSplitGroupName(split.splitGroup?.name);
+    return splitName === target;
+  });
+
+  if (matched) {
+    return toNumber(matched.pctSplit);
+  }
+
+  return toNumber(fallbackValue);
+}
+
+function findSplitGroupId(splitGroups: SplitGroupItem[], name: string) {
+  const targetName = normalizeSplitGroupName(name);
+
+  const found = splitGroups.find((item) => {
+    return normalizeSplitGroupName(item.name) === targetName;
+  });
+
+  return found?.id || "";
+}
+
 export default function CentralManagement() {
   const [items, setItems] = useState<Dept[]>([]);
+  const [splitGroups, setSplitGroups] = useState<SplitGroupItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -129,20 +259,62 @@ export default function CentralManagement() {
   const [deletingItem, setDeletingItem] = useState<Dept | null>(null);
   const [formData, setFormData] = useState<DeptFormData>(emptyForm);
 
+  const fetchSplitGroups = async () => {
+    try {
+      const list = await GetDataActiveSplitGroup();
+
+      setSplitGroups(
+        (list || []).map((item: SplitGroupItem) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          status: item.status,
+        })),
+      );
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        text: error || "ไม่สามารถดึงข้อมูลกลุ่มสัดส่วนได้",
+        confirmButtonColor: "#3b82f6",
+      });
+    }
+  };
+
   const fetchCentrals = async () => {
     try {
       setLoading(true);
       const list = await GetDataCentral();
 
       setItems(
-        (list || []).map((item: CentralApiItem) => ({
-          id: item.id,
-          name: item.name || "",
-          bachelorNormal: `${Number(item.bachelorNormal ?? 0).toFixed(2)}%`,
-          bachelorSpecial: `${Number(item.bachelorSpecial ?? 0).toFixed(2)}%`,
-          graduate: `${Number(item.graduate ?? 0).toFixed(2)}%`,
-          isActive: item.status === "1",
-        })),
+        (list || []).map((item: CentralApiItem) => {
+          const bachelorNormal = getSplitPercentByName(
+            item,
+            REQUIRED_SPLIT_GROUP_NAMES.bachelorNormal,
+            item.bachelorNormal,
+          );
+
+          const bachelorSpecial = getSplitPercentByName(
+            item,
+            REQUIRED_SPLIT_GROUP_NAMES.bachelorSpecial,
+            item.bachelorSpecial,
+          );
+
+          const graduate = getSplitPercentByName(
+            item,
+            REQUIRED_SPLIT_GROUP_NAMES.graduate,
+            item.graduate,
+          );
+
+          return {
+            id: item.id,
+            name: item.name || "",
+            bachelorNormal: formatPercent(bachelorNormal),
+            bachelorSpecial: formatPercent(bachelorSpecial),
+            graduate: formatPercent(graduate),
+            isActive: String(item.status ?? "1") === "1",
+          };
+        }),
       );
     } catch (error: any) {
       await Swal.fire({
@@ -157,6 +329,7 @@ export default function CentralManagement() {
   };
 
   useEffect(() => {
+    fetchSplitGroups();
     fetchCentrals();
   }, []);
 
@@ -237,24 +410,48 @@ export default function CentralManagement() {
     return null;
   };
 
-  const buildPayload = (status: string) => ({
-    name: formData.name.trim(),
-    status,
-    splits: [
-      {
-        splitGroup: "bachelor_normal" as const,
-        pctSplit: Number(Number(formData.bachelorNormal || 0).toFixed(2)),
-      },
-      {
-        splitGroup: "bachelor_special" as const,
-        pctSplit: Number(Number(formData.bachelorSpecial || 0).toFixed(2)),
-      },
-      {
-        splitGroup: "graduate" as const,
-        pctSplit: Number(Number(formData.graduate || 0).toFixed(2)),
-      },
-    ],
-  });
+  const buildPayload = (status: string) => {
+    const bachelorNormalId = findSplitGroupId(
+      splitGroups,
+      REQUIRED_SPLIT_GROUP_NAMES.bachelorNormal,
+    );
+
+    const bachelorSpecialId = findSplitGroupId(
+      splitGroups,
+      REQUIRED_SPLIT_GROUP_NAMES.bachelorSpecial,
+    );
+
+    const graduateId = findSplitGroupId(
+      splitGroups,
+      REQUIRED_SPLIT_GROUP_NAMES.graduate,
+    );
+
+    if (!bachelorNormalId || !bachelorSpecialId || !graduateId) {
+      throw new Error("ไม่พบข้อมูลกลุ่มสัดส่วน กรุณาตรวจสอบตาราง split_groups");
+    }
+
+    return {
+      name: formData.name.trim(),
+      status,
+      splits: [
+        {
+          splitGroupId: bachelorNormalId,
+          splitGroup: "bachelor_normal" as const,
+          pctSplit: Number(Number(formData.bachelorNormal || 0).toFixed(2)),
+        },
+        {
+          splitGroupId: bachelorSpecialId,
+          splitGroup: "bachelor_special" as const,
+          pctSplit: Number(Number(formData.bachelorSpecial || 0).toFixed(2)),
+        },
+        {
+          splitGroupId: graduateId,
+          splitGroup: "graduate" as const,
+          pctSplit: Number(Number(formData.graduate || 0).toFixed(2)),
+        },
+      ],
+    };
+  };
 
   const handleOpenAdd = () => {
     setEditingItem(null);
@@ -310,12 +507,11 @@ export default function CentralManagement() {
       setSubmitting(true);
 
       if (editingItem) {
-        await EditDataCentral(
-          editingItem.id,
-          buildPayload(editingItem.isActive ? "1" : "0"),
-        );
+        const payload = buildPayload(editingItem.isActive ? "1" : "0");
+        await EditDataCentral(editingItem.id, payload);
       } else {
-        await AddDataCentral(buildPayload("1"));
+        const payload = buildPayload("1");
+        await AddDataCentral(payload);
       }
 
       setShowFormModal(false);
@@ -335,7 +531,7 @@ export default function CentralManagement() {
       await Swal.fire({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
-        text: error || "บันทึกข้อมูลไม่สำเร็จ",
+        text: error?.message || error || "บันทึกข้อมูลไม่สำเร็จ",
         confirmButtonColor: "#3b82f6",
       });
     } finally {

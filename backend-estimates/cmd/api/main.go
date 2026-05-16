@@ -51,6 +51,11 @@ func main() {
 	universityWorks := api.Group("/university-works")
 	curriculums := api.Group("/curriculums")
 	courses := api.Group("/courses")
+	subjects := app.Group("/api/subjects")
+	splitGroups := api.Group("/split-groups")
+	annualBudgetSummaries := api.Group("/annual-budget-summaries")
+	users := api.Group("/users")
+	roles := api.Group("/roles")
 
 	auth.Post("/register", handler.Register)
 	auth.Post("/login", handler.Login)
@@ -78,6 +83,9 @@ func main() {
 	sections.Put("/:id", handler.UpdateSection)
 	sections.Patch("/:id/status", handler.UpdateSectionStatus)
 	sections.Delete("/:id", handler.DeleteSection)
+
+	splitGroups.Get("/", handler.GetSplitGroups)
+	splitGroups.Get("/active", handler.GetActiveSplitGroups)
 
 	studentYears.Get("/", handler.GetStudentYears)
 	studentYears.Post("/", handler.CreateStudentYear)
@@ -128,6 +136,27 @@ func main() {
 	courses.Put("/:id", handler.UpdateCourse)
 	courses.Patch("/:id/status", handler.UpdateCourseStatus)
 	courses.Delete("/:id", handler.DeleteCourse)
+
+	subjects.Get("/", handler.GetSubjects)
+	subjects.Get("/:id", handler.GetSubjectByID)
+	subjects.Post("/", handler.CreateSubject)
+	subjects.Put("/:id", handler.UpdateSubject)
+	subjects.Patch("/:id/status", handler.UpdateSubjectStatus)
+	subjects.Delete("/:id", handler.DeleteSubject)
+
+	annualBudgetSummaries.Get("/", handler.GetAnnualBudgetSummaries)
+	annualBudgetSummaries.Get("/:id", handler.GetAnnualBudgetSummaryByID)
+	annualBudgetSummaries.Patch("/:id/status", handler.UpdateAnnualBudgetSummaryStatus)
+	annualBudgetSummaries.Post("/", handler.CreateAnnualBudgetSummary)
+	annualBudgetSummaries.Delete("/:id", handler.DeleteAnnualBudgetSummary)
+
+	users.Get("/", handler.GetUsers)
+	users.Get("/:id", handler.GetUserByID)
+	users.Post("/", handler.CreateUser)
+	users.Put("/:id", handler.UpdateUser)
+	users.Delete("/:id", handler.DeleteUser)
+
+	roles.Get("/", handler.GetRoles)
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -3,14 +3,75 @@ import Swal from "sweetalert2";
 import Pagination from "./components/Pagination";
 import CurriculumFormModal from "./components/CurriculumFormModal";
 import DeleteCurriculumModal from "./components/DeleteCurriculumModal";
-import type { CurriculumFormData, CurriculumItem } from "@/types/curriculum";
 import {
   GetDataCurriculum,
   AddDataCurriculum,
   EditDataCurriculum,
   EditStatusCurriculum,
   DeleteDataCurriculum,
+  GetDataActiveSplitGroup,
 } from "../../../fetchapi/fetch_api_admin";
+
+const REQUIRED_SPLIT_GROUP_NAMES = {
+  bachelorNormal: "ป.ตรี (ปกติ)",
+  bachelorSpecial: "ป.ตรี (พิเศษ)",
+  graduate: "บัณฑิต",
+};
+
+type CurriculumFormData = {
+  name: string;
+  bachelorNormal: string;
+  bachelorSpecial: string;
+  graduate: string;
+};
+
+type CurriculumItem = {
+  id: string;
+  name: string;
+  bachelorNormal: string;
+  bachelorSpecial: string;
+  graduate: string;
+  isActive: boolean;
+};
+
+type SplitGroupItem = {
+  id: string;
+  name: string;
+  description?: string;
+  status?: number | string;
+};
+
+type SplitGroupApiItem = {
+  id?: string;
+  name?: string;
+  description?: string;
+  status?: number | string;
+};
+
+type CurriculumSplitApiItem = {
+  id?: string;
+  curriculumId?: string;
+  splitGroupId?: string;
+  splitGroup?: SplitGroupApiItem;
+  pctSplit?: number | string;
+};
+
+type CurriculumApiItem = {
+  id: string;
+  name?: string;
+  status?: string | number;
+  bachelorNormal?: number | string;
+  bachelorSpecial?: number | string;
+  graduate?: number | string;
+  splits?: CurriculumSplitApiItem[];
+};
+
+const emptyForm: CurriculumFormData = {
+  name: "",
+  bachelorNormal: "0",
+  bachelorSpecial: "0",
+  graduate: "0",
+};
 
 function SearchIcon() {
   return (
@@ -74,48 +135,132 @@ function DeleteIcon() {
 function StatusSwitch({
   checked,
   onChange,
+  disabled = false,
 }: {
   checked: boolean;
   onChange: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-        checked ? "bg-emerald-500" : "bg-gray-300"
-      }`}
+      disabled={disabled}
+      className={`relative inline-flex h-8 w-[64px] shrink-0 items-center rounded-full px-1 transition-colors ${checked ? "bg-emerald-500" : "bg-gray-300"
+        } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
-      <span className="absolute left-2 text-[10px] font-medium text-white">
-        {checked ? "เปิด" : ""}
+        className={`absolute text-[11px] font-bold text-white transition-all ${checked ? "left-2" : "right-2"
+          }`}
+      >
+        {checked ? "เปิด" : "ปิด"}
       </span>
+
+      <span
+        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[32px]" : "translate-x-0"
+          }`}
+      />
     </button>
   );
 }
 
-type CurriculumApiItem = {
-  id: string;
-  name?: string;
-  status?: string;
-  bachelorNormal?: number;
-  bachelorSpecial?: number;
-  graduate?: number;
-};
+function toNumber(value: any) {
+  if (value === null || value === undefined || value === "") return 0;
 
-const emptyForm: CurriculumFormData = {
-  name: "",
-  bachelorNormal: "0",
-  bachelorSpecial: "0",
-  graduate: "0",
-};
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const cleaned = String(value).replace(/,/g, "").replace("%", "").trim();
+  const number = Number(cleaned);
+
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatPercent(value: any) {
+  return `${toNumber(value).toFixed(2)}%`;
+}
+
+function normalizeText(value: any) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
+function normalizeSplitGroupName(value: any) {
+  const text = normalizeText(value);
+
+  if (
+    text === "bachelor_normal" ||
+    text === "bachelornormal" ||
+    text === "normal" ||
+    text === "ปกติ" ||
+    text === "ตรีปกติ" ||
+    text === "ป.ตรีปกติ" ||
+    text === "ป.ตรี(ปกติ)"
+  ) {
+    return REQUIRED_SPLIT_GROUP_NAMES.bachelorNormal;
+  }
+
+  if (
+    text === "bachelor_special" ||
+    text === "bachelorspecial" ||
+    text === "special" ||
+    text === "พิเศษ" ||
+    text === "ตรีพิเศษ" ||
+    text === "ป.ตรีพิเศษ" ||
+    text === "ป.ตรี(พิเศษ)"
+  ) {
+    return REQUIRED_SPLIT_GROUP_NAMES.bachelorSpecial;
+  }
+
+  if (
+    text === "graduate" ||
+    text === "grad" ||
+    text === "บัณฑิต" ||
+    text === "บัณฑิตศึกษา" ||
+    text === "ป.โท" ||
+    text === "ป.เอก"
+  ) {
+    return REQUIRED_SPLIT_GROUP_NAMES.graduate;
+  }
+
+  return String(value ?? "").trim();
+}
+
+function getSplitPercentByName(
+  item: CurriculumApiItem,
+  targetName: string,
+  fallbackValue: any,
+) {
+  const target = normalizeSplitGroupName(targetName);
+
+  const matched = (item.splits || []).find((split) => {
+    const splitName = normalizeSplitGroupName(split.splitGroup?.name);
+    return splitName === target;
+  });
+
+  if (matched) {
+    return toNumber(matched.pctSplit);
+  }
+
+  return toNumber(fallbackValue);
+}
+
+function findSplitGroupId(splitGroups: SplitGroupItem[], name: string) {
+  const targetName = normalizeSplitGroupName(name);
+
+  const found = splitGroups.find((item) => {
+    return normalizeSplitGroupName(item.name) === targetName;
+  });
+
+  return found?.id || "";
+}
 
 export default function CurriculumPage() {
   const [items, setItems] = useState<CurriculumItem[]>([]);
+  const [splitGroups, setSplitGroups] = useState<SplitGroupItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -128,20 +273,62 @@ export default function CurriculumPage() {
   const [deletingItem, setDeletingItem] = useState<CurriculumItem | null>(null);
   const [formData, setFormData] = useState<CurriculumFormData>(emptyForm);
 
+  const fetchSplitGroups = async () => {
+    try {
+      const list = await GetDataActiveSplitGroup();
+
+      setSplitGroups(
+        (list || []).map((item: SplitGroupItem) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          status: item.status,
+        })),
+      );
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        text: error || "ไม่สามารถดึงข้อมูลกลุ่มสัดส่วนได้",
+        confirmButtonColor: "#3b82f6",
+      });
+    }
+  };
+
   const fetchCurriculums = async () => {
     try {
       setLoading(true);
       const list = await GetDataCurriculum();
 
       setItems(
-        (list || []).map((item: CurriculumApiItem) => ({
-          id: item.id,
-          name: item.name || "",
-          bachelorNormal: `${Number(item.bachelorNormal ?? 0).toFixed(2)}%`,
-          bachelorSpecial: `${Number(item.bachelorSpecial ?? 0).toFixed(2)}%`,
-          graduate: `${Number(item.graduate ?? 0).toFixed(2)}%`,
-          isActive: item.status === "1",
-        })),
+        (list || []).map((item: CurriculumApiItem) => {
+          const bachelorNormal = getSplitPercentByName(
+            item,
+            REQUIRED_SPLIT_GROUP_NAMES.bachelorNormal,
+            item.bachelorNormal,
+          );
+
+          const bachelorSpecial = getSplitPercentByName(
+            item,
+            REQUIRED_SPLIT_GROUP_NAMES.bachelorSpecial,
+            item.bachelorSpecial,
+          );
+
+          const graduate = getSplitPercentByName(
+            item,
+            REQUIRED_SPLIT_GROUP_NAMES.graduate,
+            item.graduate,
+          );
+
+          return {
+            id: item.id,
+            name: item.name || "",
+            bachelorNormal: formatPercent(bachelorNormal),
+            bachelorSpecial: formatPercent(bachelorSpecial),
+            graduate: formatPercent(graduate),
+            isActive: String(item.status ?? "1") === "1",
+          };
+        }),
       );
     } catch (error: any) {
       await Swal.fire({
@@ -156,12 +343,14 @@ export default function CurriculumPage() {
   };
 
   useEffect(() => {
+    fetchSplitGroups();
     fetchCurriculums();
   }, []);
 
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     if (!keyword) return items;
+
     return items.filter((item) => item.name.toLowerCase().includes(keyword));
   }, [items, search]);
 
@@ -177,14 +366,20 @@ export default function CurriculumPage() {
   const sanitizePercent = (value: string) => {
     if (value === "") return "";
     if (!/^\d*\.?\d{0,2}$/.test(value)) return null;
+
+    const numericValue = Number(value);
+    if (numericValue > 100) return "100";
+
     return value;
   };
 
   const handleFormChange = (
-    field: keyof CurriculumFormData,
+    field: string | number | symbol,
     value: string,
   ) => {
-    if (field === "name") {
+    const fieldName = String(field);
+
+    if (fieldName === "name") {
       setFormData((prev) => ({
         ...prev,
         name: value.slice(0, 150),
@@ -195,10 +390,28 @@ export default function CurriculumPage() {
     const sanitized = sanitizePercent(value);
     if (sanitized === null) return;
 
-    setFormData((prev) => ({
-      ...prev,
-      [field]: sanitized,
-    }));
+    if (fieldName === "bachelorNormal") {
+      setFormData((prev) => ({
+        ...prev,
+        bachelorNormal: sanitized,
+      }));
+      return;
+    }
+
+    if (fieldName === "bachelorSpecial") {
+      setFormData((prev) => ({
+        ...prev,
+        bachelorSpecial: sanitized,
+      }));
+      return;
+    }
+
+    if (fieldName === "graduate") {
+      setFormData((prev) => ({
+        ...prev,
+        graduate: sanitized,
+      }));
+    }
   };
 
   const validatePercent = (value: string, label: string) => {
@@ -207,23 +420,27 @@ export default function CurriculumPage() {
     const num = Number(value);
     if (Number.isNaN(num)) return `${label} ต้องเป็นตัวเลข`;
     if (num < 0) return `${label} ต้องไม่น้อยกว่า 0`;
+    if (num > 100) return `${label} ต้องไม่เกิน 100`;
 
     return null;
   };
 
   const validateForm = () => {
     if (!formData.name.trim()) {
-      return "กรุณากรอกชื่อบริหาร";
+      return "กรุณากรอกชื่อบริหารหลักสูตร";
     }
 
     if (formData.name.trim().length > 150) {
-      return "ชื่อบริหารต้องไม่เกิน 150 ตัวอักษร";
+      return "ชื่อบริหารหลักสูตรต้องไม่เกิน 150 ตัวอักษร";
     }
 
     const normalError = validatePercent(formData.bachelorNormal, "ตรี (ปกติ)");
     if (normalError) return normalError;
 
-    const specialError = validatePercent(formData.bachelorSpecial, "ตรี (พิเศษ)");
+    const specialError = validatePercent(
+      formData.bachelorSpecial,
+      "ตรี (พิเศษ)",
+    );
     if (specialError) return specialError;
 
     const graduateError = validatePercent(formData.graduate, "บัณฑิต");
@@ -232,24 +449,48 @@ export default function CurriculumPage() {
     return null;
   };
 
-  const buildPayload = (status: string) => ({
-    name: formData.name.trim(),
-    status,
-    splits: [
-      {
-        splitGroup: "bachelor_normal" as const,
-        pctSplit: Number(Number(formData.bachelorNormal || 0).toFixed(2)),
-      },
-      {
-        splitGroup: "bachelor_special" as const,
-        pctSplit: Number(Number(formData.bachelorSpecial || 0).toFixed(2)),
-      },
-      {
-        splitGroup: "graduate" as const,
-        pctSplit: Number(Number(formData.graduate || 0).toFixed(2)),
-      },
-    ],
-  });
+  const buildPayload = (status: string) => {
+    const bachelorNormalId = findSplitGroupId(
+      splitGroups,
+      REQUIRED_SPLIT_GROUP_NAMES.bachelorNormal,
+    );
+
+    const bachelorSpecialId = findSplitGroupId(
+      splitGroups,
+      REQUIRED_SPLIT_GROUP_NAMES.bachelorSpecial,
+    );
+
+    const graduateId = findSplitGroupId(
+      splitGroups,
+      REQUIRED_SPLIT_GROUP_NAMES.graduate,
+    );
+
+    if (!bachelorNormalId || !bachelorSpecialId || !graduateId) {
+      throw new Error("ไม่พบข้อมูลกลุ่มสัดส่วน กรุณาตรวจสอบตาราง split_groups");
+    }
+
+    return {
+      name: formData.name.trim(),
+      status,
+      splits: [
+        {
+          splitGroupId: bachelorNormalId,
+          splitGroup: "bachelor_normal" as const,
+          pctSplit: Number(Number(formData.bachelorNormal || 0).toFixed(2)),
+        },
+        {
+          splitGroupId: bachelorSpecialId,
+          splitGroup: "bachelor_special" as const,
+          pctSplit: Number(Number(formData.bachelorSpecial || 0).toFixed(2)),
+        },
+        {
+          splitGroupId: graduateId,
+          splitGroup: "graduate" as const,
+          pctSplit: Number(Number(formData.graduate || 0).toFixed(2)),
+        },
+      ],
+    };
+  };
 
   const handleOpenAdd = () => {
     setEditingItem(null);
@@ -259,12 +500,14 @@ export default function CurriculumPage() {
 
   const handleOpenEdit = (item: CurriculumItem) => {
     setEditingItem(item);
+
     setFormData({
       name: item.name,
       bachelorNormal: item.bachelorNormal.replace("%", ""),
       bachelorSpecial: item.bachelorSpecial.replace("%", ""),
       graduate: item.graduate.replace("%", ""),
     });
+
     setShowFormModal(true);
   };
 
@@ -286,7 +529,7 @@ export default function CurriculumPage() {
       icon: "question",
       title: editingItem ? "ยืนยันการแก้ไขข้อมูล" : "ยืนยันการบันทึกข้อมูล",
       html: `
-        ต้องการ${editingItem ? "แก้ไข" : "บันทึก"}บริหาร ${nameValue} ใช่หรือไม่<br/>
+        ต้องการ${editingItem ? "แก้ไข" : "บันทึก"}บริหารหลักสูตร <b>${nameValue}</b> ใช่หรือไม่<br/>
         ตรี (ปกติ) <b>${Number(formData.bachelorNormal).toFixed(2)}%</b><br/>
         ตรี (พิเศษ) <b>${Number(formData.bachelorSpecial).toFixed(2)}%</b><br/>
         บัณฑิต <b>${Number(formData.graduate).toFixed(2)}%</b>
@@ -305,12 +548,11 @@ export default function CurriculumPage() {
       setSubmitting(true);
 
       if (editingItem) {
-        await EditDataCurriculum(
-          editingItem.id,
-          buildPayload(editingItem.isActive ? "1" : "0"),
-        );
+        const payload = buildPayload(editingItem.isActive ? "1" : "0");
+        await EditDataCurriculum(editingItem.id, payload);
       } else {
-        await AddDataCurriculum(buildPayload("1"));
+        const payload = buildPayload("1");
+        await AddDataCurriculum(payload);
       }
 
       setShowFormModal(false);
@@ -322,15 +564,15 @@ export default function CurriculumPage() {
         icon: "success",
         title: "สำเร็จ",
         text: editingItem
-          ? `แก้ไขข้อมูลบริหาร "${nameValue}" เรียบร้อยแล้ว`
-          : `เพิ่มข้อมูลบริหาร "${nameValue}" เรียบร้อยแล้ว`,
+          ? `แก้ไขบริหารหลักสูตร "${nameValue}" เรียบร้อยแล้ว`
+          : `เพิ่มบริหารหลักสูตร "${nameValue}" เรียบร้อยแล้ว`,
         confirmButtonColor: "#22c55e",
       });
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
-        text: error || "บันทึกข้อมูลไม่สำเร็จ",
+        text: error?.message || error || "บันทึกข้อมูลไม่สำเร็จ",
         confirmButtonColor: "#3b82f6",
       });
     } finally {
@@ -344,7 +586,7 @@ export default function CurriculumPage() {
     const confirmResult = await Swal.fire({
       icon: "warning",
       title: "ยืนยันการลบข้อมูล",
-      text: `ต้องการลบข้อมูลบริหาร "${deletingItem.name}" ใช่หรือไม่`,
+      text: `ต้องการลบข้อมูลบริหารหลักสูตร "${deletingItem.name}" ใช่หรือไม่`,
       showCancelButton: true,
       confirmButtonText: "ลบข้อมูล",
       cancelButtonText: "ยกเลิก",
@@ -364,7 +606,7 @@ export default function CurriculumPage() {
       await Swal.fire({
         icon: "success",
         title: "ลบสำเร็จ",
-        text: "ลบข้อมูลบริหารเรียบร้อยแล้ว",
+        text: "ลบข้อมูลบริหารหลักสูตรเรียบร้อยแล้ว",
         confirmButtonColor: "#22c55e",
       });
     } catch (error: any) {
@@ -386,7 +628,7 @@ export default function CurriculumPage() {
     const confirmResult = await Swal.fire({
       icon: "question",
       title: "ยืนยันการเปลี่ยนสถานะ",
-      text: `ต้องการ${nextStatusText}บริหาร "${item.name}" ใช่หรือไม่`,
+      text: `ต้องการ${nextStatusText}บริหารหลักสูตร "${item.name}" ใช่หรือไม่`,
       showCancelButton: true,
       confirmButtonText: "บันทึก",
       cancelButtonText: "ยกเลิก",
@@ -404,7 +646,7 @@ export default function CurriculumPage() {
       await Swal.fire({
         icon: "success",
         title: "สำเร็จ",
-        text: `เปลี่ยนสถานะบริหาร "${item.name}" เรียบร้อยแล้ว`,
+        text: `เปลี่ยนสถานะบริหารหลักสูตร "${item.name}" เรียบร้อยแล้ว`,
         confirmButtonColor: "#22c55e",
       });
     } catch (error: any) {
@@ -449,7 +691,7 @@ export default function CurriculumPage() {
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            เพิ่มบริหาร
+            เพิ่มบริหารหลักสูตร
           </button>
         </div>
 
@@ -459,13 +701,14 @@ export default function CurriculumPage() {
               <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
                 <SearchIcon />
               </div>
+
               <input
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="ค้นหาชื่อบริหาร..."
+                placeholder="ค้นหาชื่อบริหารหลักสูตร..."
                 className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400"
               />
             </div>
@@ -488,21 +731,27 @@ export default function CurriculumPage() {
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     ลำดับ
                   </th>
+
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600">
-                    ชื่อบริหาร
+                    ชื่อบริหารหลักสูตร
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     ตรี (ปกติ)
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     ตรี (พิเศษ)
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     บัณฑิต
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     สถานะ
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     จัดการ
                   </th>
@@ -601,7 +850,9 @@ export default function CurriculumPage() {
 
         {showFormModal && (
           <CurriculumFormModal
-            title={editingItem ? "แก้ไขข้อมูลบริหารหลักสูตร" : "เพิ่มบริหารหลักสูตร"}
+            title={
+              editingItem ? "แก้ไขข้อมูลบริหารหลักสูตร" : "เพิ่มบริหารหลักสูตร"
+            }
             iconColor="#3b82f6"
             formData={formData}
             onChange={handleFormChange}

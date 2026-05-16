@@ -16,30 +16,53 @@ func NewUniversityWorkRepository(db *gorm.DB) *UniversityWorkRepository {
 
 func (r *UniversityWorkRepository) GetAll() ([]models.UniversityWork, error) {
 	var items []models.UniversityWork
+
 	err := r.DB.
-		Preload("Splits").
-		Order("created_at DESC").
+		Preload("Splits", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("university_work_splits.deleted_at IS NULL").
+				Order("university_work_splits.created_at ASC")
+		}).
+		Preload("Splits.SplitGroup").
+		Where("university_works.deleted_at IS NULL").
+		Order("university_works.created_at DESC").
 		Find(&items).Error
+
 	return items, err
 }
 
 func (r *UniversityWorkRepository) GetByID(id string) (*models.UniversityWork, error) {
 	var item models.UniversityWork
+
 	err := r.DB.
-		Preload("Splits").
-		First(&item, "id = ?", id).Error
+		Preload("Splits", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("university_work_splits.deleted_at IS NULL").
+				Order("university_work_splits.created_at ASC")
+		}).
+		Preload("Splits.SplitGroup").
+		Where("university_works.deleted_at IS NULL").
+		First(&item, "university_works.id = ?", id).Error
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &item, nil
 }
 
 func (r *UniversityWorkRepository) GetByName(name string) (*models.UniversityWork, error) {
 	var item models.UniversityWork
-	err := r.DB.Where("name = ?", name).First(&item).Error
+
+	err := r.DB.
+		Where("name = ?", name).
+		Where("deleted_at IS NULL").
+		First(&item).Error
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &item, nil
 }
 
@@ -69,7 +92,8 @@ func (r *UniversityWorkRepository) UpdateWithSplits(item *models.UniversityWork,
 			return err
 		}
 
-		if err := tx.Unscoped().
+		if err := tx.
+			Unscoped().
 			Where("university_work_id = ?", item.ID).
 			Delete(&models.UniversityWorkSplit{}).Error; err != nil {
 			return err
@@ -95,7 +119,8 @@ func (r *UniversityWorkRepository) Update(item *models.UniversityWork) error {
 
 func (r *UniversityWorkRepository) Delete(id string) error {
 	return r.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Unscoped().
+		if err := tx.
+			Unscoped().
 			Where("university_work_id = ?", id).
 			Delete(&models.UniversityWorkSplit{}).Error; err != nil {
 			return err

@@ -15,10 +15,41 @@ func NewCourseRepository(db *gorm.DB) *CourseRepository {
 	return &CourseRepository{DB: db}
 }
 
+func (r *CourseRepository) GetAll() ([]models.Course, error) {
+	var items []models.Course
+
+	err := r.DB.
+		Preload("DegreeLevel").
+		Preload("DegreeLevel.Section").
+		Preload("Structures", func(db *gorm.DB) *gorm.DB {
+			return db.Where("deleted_at IS NULL").Order("created_at ASC")
+		}).
+		Preload("Structures.SubjectCategory").
+		Preload("SubjectOutsideDeducts", func(db *gorm.DB) *gorm.DB {
+			return db.Where("deleted_at IS NULL").Order("created_at ASC")
+		}).
+		Preload("SubjectOutsideDeducts.SubjectOutside").
+		Preload("Students", func(db *gorm.DB) *gorm.DB {
+			return db.Where("deleted_at IS NULL").Order("year_id ASC")
+		}).
+		Preload("Students.Year").
+		Where("deleted_at IS NULL").
+		Order("created_at DESC").
+		Find(&items).Error
+
+	return items, err
+}
+
 func (r *CourseRepository) GetByID(id string) (*models.Course, error) {
 	var item models.Course
 
 	if err := r.DB.
+		Preload("DegreeLevel").
+		Preload("DegreeLevel.Section").
+		Preload("Students", func(db *gorm.DB) *gorm.DB {
+			return db.Where("deleted_at IS NULL").Order("year_id ASC")
+		}).
+		Preload("Students.Year").
 		Where("id = ?", id).
 		Where("deleted_at IS NULL").
 		First(&item).Error; err != nil {
@@ -43,7 +74,7 @@ func (r *CourseRepository) GetByIDWithRelations(id string) (*models.Course, erro
 		}).
 		Preload("SubjectOutsideDeducts.SubjectOutside").
 		Preload("Students", func(db *gorm.DB) *gorm.DB {
-			return db.Where("deleted_at IS NULL").Order("created_at ASC")
+			return db.Where("deleted_at IS NULL").Order("year_id ASC")
 		}).
 		Preload("Students.Year").
 		Where("id = ?", id).
@@ -62,6 +93,7 @@ func (r *CourseRepository) Delete(id string) error {
 func (r *CourseRepository) UpdateStatus(id string, status string) error {
 	return r.DB.Model(&models.Course{}).
 		Where("id = ?", id).
+		Where("deleted_at IS NULL").
 		Update("status", status).Error
 }
 

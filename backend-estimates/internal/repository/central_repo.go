@@ -16,30 +16,53 @@ func NewCentralRepository(db *gorm.DB) *CentralRepository {
 
 func (r *CentralRepository) GetAll() ([]models.Central, error) {
 	var items []models.Central
+
 	err := r.DB.
-		Preload("Splits").
-		Order("created_at DESC").
+		Preload("Splits", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("central_splits.deleted_at IS NULL").
+				Order("central_splits.created_at ASC")
+		}).
+		Preload("Splits.SplitGroup").
+		Where("centrals.deleted_at IS NULL").
+		Order("centrals.created_at DESC").
 		Find(&items).Error
+
 	return items, err
 }
 
 func (r *CentralRepository) GetByID(id string) (*models.Central, error) {
 	var item models.Central
+
 	err := r.DB.
-		Preload("Splits").
-		First(&item, "id = ?", id).Error
+		Preload("Splits", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("central_splits.deleted_at IS NULL").
+				Order("central_splits.created_at ASC")
+		}).
+		Preload("Splits.SplitGroup").
+		Where("centrals.deleted_at IS NULL").
+		First(&item, "centrals.id = ?", id).Error
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &item, nil
 }
 
 func (r *CentralRepository) GetByName(name string) (*models.Central, error) {
 	var item models.Central
-	err := r.DB.Where("name = ?", name).First(&item).Error
+
+	err := r.DB.
+		Where("name = ?", name).
+		Where("deleted_at IS NULL").
+		First(&item).Error
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &item, nil
 }
 
@@ -69,7 +92,10 @@ func (r *CentralRepository) UpdateWithSplits(item *models.Central, splits []mode
 			return err
 		}
 
-		if err := tx.Where("central_id = ?", item.ID).Delete(&models.CentralSplit{}).Error; err != nil {
+		if err := tx.
+			Unscoped().
+			Where("central_id = ?", item.ID).
+			Delete(&models.CentralSplit{}).Error; err != nil {
 			return err
 		}
 
@@ -93,7 +119,10 @@ func (r *CentralRepository) Update(item *models.Central) error {
 
 func (r *CentralRepository) Delete(id string) error {
 	return r.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("central_id = ?", id).Delete(&models.CentralSplit{}).Error; err != nil {
+		if err := tx.
+			Unscoped().
+			Where("central_id = ?", id).
+			Delete(&models.CentralSplit{}).Error; err != nil {
 			return err
 		}
 

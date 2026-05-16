@@ -54,9 +54,9 @@ type CreateCourseInput struct {
 	DeductToUni   float64    `json:"deductToUni"`
 	Status        string     `json:"status"`
 
-	Structures            []CreateCourseStructureInput       `json:"structures"`
+	Structures            []CreateCourseStructureInput      `json:"structures"`
 	SubjectOutsideDeducts []CreateSubjectOutsideDeductInput `json:"subjectOutsideDeducts"`
-	Students              []CreateCourseStudentInput         `json:"students"`
+	Students              []CreateCourseStudentInput        `json:"students"`
 }
 
 type UpdateCourseInput struct {
@@ -69,9 +69,9 @@ type UpdateCourseInput struct {
 	DeductToUni   float64    `json:"deductToUni"`
 	Status        string     `json:"status"`
 
-	Structures            []CreateCourseStructureInput       `json:"structures"`
+	Structures            []CreateCourseStructureInput      `json:"structures"`
 	SubjectOutsideDeducts []CreateSubjectOutsideDeductInput `json:"subjectOutsideDeducts"`
-	Students              []CreateCourseStudentInput         `json:"students"`
+	Students              []CreateCourseStudentInput        `json:"students"`
 }
 
 type UpdateCourseStatusInput struct {
@@ -92,6 +92,14 @@ type DegreeLevelMiniResponse struct {
 	Status    string              `json:"status"`
 }
 
+type CourseStudentResponse struct {
+	ID            string `json:"id"`
+	YearID        int    `json:"yearId"`
+	Year          string `json:"year"`
+	StudentAmount int    `json:"studentAmount"`
+	Amount        int    `json:"amount"`
+}
+
 type CourseResponse struct {
 	ID            string                  `json:"id"`
 	DegreeLevelID string                  `json:"degreeLevelId"`
@@ -103,6 +111,7 @@ type CourseResponse struct {
 	TuitionFees   float64                 `json:"tuitionFees"`
 	DeductToUni   float64                 `json:"deductToUni"`
 	Status        string                  `json:"status"`
+	Students      []CourseStudentResponse `json:"students"`
 }
 
 type CourseGroupResponse struct {
@@ -128,13 +137,6 @@ type SubjectOutsideDeductResponse struct {
 	SubjectCode      string  `json:"subjectCode"`
 	SubjectName      string  `json:"subjectName"`
 	Amount           float64 `json:"amount"`
-}
-
-type CourseStudentResponse struct {
-	ID     string `json:"id"`
-	YearID int    `json:"yearId"`
-	Year   string `json:"year"`
-	Amount int    `json:"amount"`
 }
 
 type CourseDetailResponse struct {
@@ -174,6 +176,34 @@ func roundCourse2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
+func mapCourseStudentsResponse(students []models.CourseStudent) []CourseStudentResponse {
+	result := make([]CourseStudentResponse, 0, len(students))
+
+	for _, student := range students {
+		yearName := ""
+		if student.Year.ID != 0 {
+			yearName = student.Year.Year
+		}
+
+		result = append(result, CourseStudentResponse{
+			ID:            student.ID.String(),
+			YearID:        student.YearID,
+			Year:          yearName,
+			StudentAmount: student.StudentAmount,
+			Amount:        student.StudentAmount,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].YearID == result[j].YearID {
+			return result[i].Year < result[j].Year
+		}
+		return result[i].YearID < result[j].YearID
+	})
+
+	return result
+}
+
 func mapCourseResponse(item *models.Course) CourseResponse {
 	resp := CourseResponse{
 		ID:            item.ID.String(),
@@ -185,9 +215,10 @@ func mapCourseResponse(item *models.Course) CourseResponse {
 		TuitionFees:   item.TuitionFees,
 		DeductToUni:   item.DeductToUni,
 		Status:        item.Status,
+		Students:      mapCourseStudentsResponse(item.Students),
 	}
 
-	if item.DegreeLevel.ID.String() != "" {
+	if item.DegreeLevel.ID != uuid.Nil {
 		resp.DegreeLevel = DegreeLevelMiniResponse{
 			ID:        item.DegreeLevel.ID.String(),
 			SectionID: item.DegreeLevel.SectionID,
@@ -219,7 +250,7 @@ func mapCourseDetailResponse(item *models.Course) *CourseDetailResponse {
 		Status:                item.Status,
 		Structures:            []CourseStructureResponse{},
 		SubjectOutsideDeducts: []SubjectOutsideDeductResponse{},
-		Students:              []CourseStudentResponse{},
+		Students:              mapCourseStudentsResponse(item.Students),
 	}
 
 	for _, structure := range item.Structures {
@@ -241,19 +272,6 @@ func mapCourseDetailResponse(item *models.Course) *CourseDetailResponse {
 		})
 	}
 
-	for _, student := range item.Students {
-		resp.Students = append(resp.Students, CourseStudentResponse{
-			ID:     student.ID.String(),
-			YearID: student.YearID,
-			Year:   student.Year.Year,
-			Amount: student.StudentAmount,
-		})
-	}
-
-	sort.Slice(resp.Students, func(i, j int) bool {
-		return resp.Students[i].Year < resp.Students[j].Year
-	})
-
 	return resp
 }
 
@@ -263,6 +281,10 @@ func (s *CourseService) getAllCourses() ([]models.Course, error) {
 	if err := s.Repo.DB.
 		Preload("DegreeLevel").
 		Preload("DegreeLevel.Section").
+		Preload("Students", func(db *gorm.DB) *gorm.DB {
+			return db.Where("deleted_at IS NULL").Order("year_id ASC")
+		}).
+		Preload("Students.Year").
 		Where("deleted_at IS NULL").
 		Order("created_at DESC").
 		Find(&items).Error; err != nil {

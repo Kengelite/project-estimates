@@ -19,6 +19,26 @@ const emptyForm: SectionFormData = {
   sectionName: "",
 };
 
+type SortKey = "sectionName" | "status";
+type SortOrder = "asc" | "desc";
+
+type SortConfig = {
+  key: SortKey;
+  order: SortOrder;
+};
+
+type SectionApiItem = {
+  id?: number | string;
+  ID?: number | string;
+  section_name?: string;
+  sectionName?: string;
+  SectionName?: string;
+  name?: string;
+  Name?: string;
+  status?: string | number | boolean;
+  Status?: string | number | boolean;
+};
+
 function SearchIcon() {
   return (
     <svg
@@ -35,6 +55,38 @@ function SearchIcon() {
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
+  );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  sortKey: SortKey;
+  sortConfig: SortConfig;
+  onSort: (key: SortKey) => void;
+  align?: "left" | "center";
+}) {
+  const isActive = sortConfig.key === sortKey;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`inline-flex items-center gap-1 text-xs font-semibold text-gray-600 transition-colors hover:text-blue-600 ${align === "center" ? "justify-center" : "justify-start"
+        }`}
+    >
+      <span>{label}</span>
+      {isActive && (
+        <span className="text-[10px] text-gray-400">
+          {sortConfig.order === "desc" ? "▼" : "▲"}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -89,25 +141,51 @@ function StatusSwitch({
     <button
       type="button"
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${checked ? "bg-emerald-500" : "bg-gray-300"
+      className={`relative inline-flex h-8 w-[64px] items-center rounded-full px-1 transition-colors ${checked ? "bg-emerald-500" : "bg-gray-300"
         }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${checked ? "translate-x-6" : "translate-x-1"
+        className={`absolute text-[11px] font-bold text-white transition-all ${checked ? "left-2" : "right-2"
+          }`}
+      >
+        {checked ? "เปิด" : "ปิด"}
+      </span>
+
+      <span
+        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[32px]" : "translate-x-0"
           }`}
       />
-      <span className="absolute left-2 text-[10px] font-medium text-white">
-        {checked ? "เปิด" : ""}
-      </span>
     </button>
   );
 }
 
-type SectionApiItem = {
-  id: number;
-  section_name: string;
-  status: string;
-};
+function pickArrayFromResponse<T>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.Data)) return response.Data;
+  if (Array.isArray(response?.items)) return response.items;
+  if (Array.isArray(response?.result)) return response.result;
+  if (Array.isArray(response?.results)) return response.results;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response?.data?.items)) return response.data.items;
+
+  return [];
+}
+
+function getStatusBoolean(status: any) {
+  return String(status ?? "1") === "1" || status === true;
+}
+
+function compareText(a: string, b: string) {
+  return String(a || "").localeCompare(String(b || ""), "th", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function compareBoolean(a: boolean, b: boolean) {
+  return Number(a) - Number(b);
+}
 
 export default function SectionManagement() {
   const [items, setItems] = useState<SectionItem[]>([]);
@@ -118,22 +196,41 @@ export default function SectionManagement() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "sectionName",
+    order: "asc",
+  });
+
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingItem, setEditingItem] = useState<SectionItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<SectionItem | null>(null);
   const [formData, setFormData] = useState<SectionFormData>(emptyForm);
 
+  const mapSectionToItem = (item: SectionApiItem): SectionItem => {
+    return {
+      id: Number(item.id ?? item.ID ?? 0),
+      sectionName:
+        item.sectionName ||
+        item.section_name ||
+        item.SectionName ||
+        item.name ||
+        item.Name ||
+        "",
+      isActive: getStatusBoolean(item.status ?? item.Status),
+    };
+  };
+
   const fetchSections = async () => {
     try {
       setLoading(true);
-      const list = await GetDataSection();
+
+      const response = await GetDataSection();
+      const list = pickArrayFromResponse<SectionApiItem>(response);
 
       setItems(
-        (list || []).map((item: any) => ({
-          id: item.id,
-          sectionName: item.sectionName || "",
-          isActive: item.status === "1",
-        })),
+        list
+          .map((item) => mapSectionToItem(item))
+          .filter((item) => Boolean(item.id) && Boolean(item.sectionName)),
       );
     } catch (error: any) {
       await Swal.fire({
@@ -151,28 +248,71 @@ export default function SectionManagement() {
     fetchSections();
   }, []);
 
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) {
+        return {
+          key,
+          order: "asc",
+        };
+      }
+
+      return {
+        key,
+        order: prev.order === "asc" ? "desc" : "asc",
+      };
+    });
+
+    setPage(1);
+  };
+
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
+
     if (!keyword) return items;
 
-    return items.filter((item) =>
-      item.sectionName.toLowerCase().includes(keyword),
-    );
+    return items.filter((item) => {
+      const statusText = item.isActive ? "เปิด" : "ปิด";
+
+      return (
+        item.sectionName.toLowerCase().includes(keyword) ||
+        statusText.toLowerCase().includes(keyword)
+      );
+    });
   }, [items, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const sortedItems = useMemo(() => {
+    const rows = [...filteredItems];
 
-  const paginatedItems = filteredItems.slice(
+    rows.sort((a, b) => {
+      let result = 0;
+
+      if (sortConfig.key === "sectionName") {
+        result = compareText(a.sectionName, b.sectionName);
+      }
+
+      if (sortConfig.key === "status") {
+        result = compareBoolean(a.isActive, b.isActive);
+      }
+
+      return sortConfig.order === "asc" ? result : -result;
+    });
+
+    return rows;
+  }, [filteredItems, sortConfig]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
+
+  const paginatedItems = sortedItems.slice(
     (page - 1) * pageSize,
     page * pageSize,
   );
 
-  const resetForm = () => setFormData(emptyForm);
+  const resetForm = () => {
+    setFormData(emptyForm);
+  };
 
-  const handleFormChange = (
-    field: keyof SectionFormData,
-    value: string,
-  ) => {
+  const handleFormChange = (field: keyof SectionFormData, value: string) => {
     if (field === "sectionName") {
       setFormData((prev) => ({
         ...prev,
@@ -181,7 +321,10 @@ export default function SectionManagement() {
       return;
     }
 
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const validateForm = () => {
@@ -258,7 +401,6 @@ export default function SectionManagement() {
       setShowFormModal(false);
       setEditingItem(null);
       resetForm();
-      await fetchSections();
 
       await Swal.fire({
         icon: "success",
@@ -266,8 +408,10 @@ export default function SectionManagement() {
         text: editingItem
           ? `แก้ไขโครงการ "${value}" เรียบร้อยแล้ว`
           : `เพิ่มโครงการ "${value}" เรียบร้อยแล้ว`,
-        confirmButtonColor: "#22c55e",
+        confirmButtonColor: "#3b82f6",
       });
+
+      await fetchSections();
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -283,32 +427,21 @@ export default function SectionManagement() {
   const handleDelete = async () => {
     if (!deletingItem) return;
 
-    const confirmResult = await Swal.fire({
-      icon: "warning",
-      title: "ยืนยันการลบข้อมูล",
-      text: `ต้องการลบโครงการ "${deletingItem.sectionName}" ใช่หรือไม่`,
-      showCancelButton: true,
-      confirmButtonText: "ลบข้อมูล",
-      cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#9ca3af",
-      reverseButtons: true,
-    });
-
-    if (!confirmResult.isConfirmed) return;
-
     try {
       setSubmitting(true);
+
       await DeleteDataSection(deletingItem.id);
+
       setDeletingItem(null);
-      await fetchSections();
 
       await Swal.fire({
         icon: "success",
         title: "ลบสำเร็จ",
         text: "ลบข้อมูลโครงการระดับปริญญาเรียบร้อยแล้ว",
-        confirmButtonColor: "#22c55e",
+        confirmButtonColor: "#3b82f6",
       });
+
+      await fetchSections();
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -328,11 +461,11 @@ export default function SectionManagement() {
     const confirmResult = await Swal.fire({
       icon: "question",
       title: "ยืนยันการเปลี่ยนสถานะ",
-      text: `ต้องการ${nextStatusText}โครงการ "${item.sectionName}" ใช่หรือไม่`,
+      text: `ต้องการ${nextStatusText}โครงการ ${item.sectionName} ใช่หรือไม่`,
       showCancelButton: true,
       confirmButtonText: "บันทึก",
       cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#22c55e",
+      confirmButtonColor: "#16a34a",
       cancelButtonColor: "#9ca3af",
       reverseButtons: true,
     });
@@ -341,13 +474,23 @@ export default function SectionManagement() {
 
     try {
       await EditStatusSection(item.id, nextStatus);
-      await fetchSections();
+
+      setItems((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? {
+              ...row,
+              isActive: nextStatus === "1",
+            }
+            : row,
+        ),
+      );
 
       await Swal.fire({
         icon: "success",
         title: "สำเร็จ",
         text: `เปลี่ยนสถานะโครงการ "${item.sectionName}" เรียบร้อยแล้ว`,
-        confirmButtonColor: "#22c55e",
+        confirmButtonColor: "#3b82f6",
       });
     } catch (error: any) {
       await Swal.fire({
@@ -360,10 +503,11 @@ export default function SectionManagement() {
   };
 
   const handleFormKeyDown = async (
-    e: React.KeyboardEvent<HTMLDivElement>,
+    event: React.KeyboardEvent<HTMLDivElement>,
   ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+    if (event.key === "Enter") {
+      event.preventDefault();
+
       if (!submitting) {
         await handleSubmit();
       }
@@ -404,7 +548,7 @@ export default function SectionManagement() {
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            เพิ่มโครงการ
+            เพิ่มโครงการระดับปริญญา
           </button>
         </div>
 
@@ -414,13 +558,14 @@ export default function SectionManagement() {
               <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
                 <SearchIcon />
               </div>
+
               <input
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
+                onChange={(event) => {
+                  setSearch(event.target.value);
                   setPage(1);
                 }}
-                placeholder="ค้นหาชื่อโครงการ..."
+                placeholder="ค้นหาโครงการระดับปริญญา..."
                 className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400"
               />
             </div>
@@ -440,12 +585,26 @@ export default function SectionManagement() {
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     ลำดับ
                   </th>
+
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600">
-                    ชื่อโครงการ
+                    <SortableHeader
+                      label="โครงการระดับปริญญา"
+                      sortKey="sectionName"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                    />
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
-                    สถานะ
+                    <SortableHeader
+                      label="สถานะ"
+                      sortKey="status"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      align="center"
+                    />
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     จัดการ
                   </th>
@@ -500,6 +659,7 @@ export default function SectionManagement() {
                             type="button"
                             onClick={() => handleOpenEdit(item)}
                             disabled={submitting}
+                            title="แก้ไข"
                           >
                             <EditIcon />
                           </button>
@@ -508,6 +668,7 @@ export default function SectionManagement() {
                             type="button"
                             onClick={() => setDeletingItem(item)}
                             disabled={submitting}
+                            title="ลบ"
                           >
                             <DeleteIcon />
                           </button>
@@ -524,7 +685,7 @@ export default function SectionManagement() {
             page={page}
             totalPages={totalPages}
             pageSize={pageSize}
-            totalItems={filteredItems.length}
+            totalItems={sortedItems.length}
             setPage={setPage}
             setPageSize={setPageSize}
           />
@@ -533,7 +694,11 @@ export default function SectionManagement() {
         {showFormModal && (
           <div onKeyDown={handleFormKeyDown}>
             <SectionFormModal
-              title={editingItem ? "แก้ไขข้อมูลโครงการ" : "เพิ่มโครงการ"}
+              title={
+                editingItem
+                  ? "แก้ไขโครงการระดับปริญญา"
+                  : "เพิ่มโครงการระดับปริญญา"
+              }
               formData={formData}
               onChange={handleFormChange}
               onClose={() => {

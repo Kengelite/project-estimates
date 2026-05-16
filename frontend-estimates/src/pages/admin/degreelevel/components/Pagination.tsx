@@ -1,64 +1,70 @@
-import { useState } from "react";
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
 interface PaginationProps {
-  page: number;
+  totalItems: number;
+  currentPage: number;
   totalPages: number;
   pageSize: number;
-  totalItems: number;
-  setPage: (p: number | ((prev: number) => number)) => void;
-  setPageSize: (size: number) => void;
+  pageSizeOptions?: number[];
+  goTo: string;
+  onPageChange: (page: number | ((prev: number) => number)) => void;
+  onPageSizeChange: (pageSize: number) => void;
+  onGoToChange: (value: string) => void;
+  onGoToSubmit: () => void;
 }
 
 export default function Pagination({
-  page,
+  totalItems,
+  currentPage,
   totalPages,
   pageSize,
-  totalItems,
-  setPage,
-  setPageSize,
+  pageSizeOptions = [10, 20, 50],
+  goTo,
+  onPageChange,
+  onPageSizeChange,
+  onGoToChange,
+  onGoToSubmit,
 }: PaginationProps) {
-  const [goTo, setGoTo] = useState("");
+  const safeTotalPages = Math.max(1, totalPages);
 
   const range = (): (number | "...")[] => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (safeTotalPages <= 7) {
+      return Array.from({ length: safeTotalPages }, (_, i) => i + 1);
     }
 
     const pages: (number | "...")[] = [1];
 
-    if (page > 3) pages.push("...");
+    if (currentPage > 3) pages.push("...");
 
     for (
-      let i = Math.max(2, page - 1);
-      i <= Math.min(totalPages - 1, page + 1);
+      let i = Math.max(2, currentPage - 1);
+      i <= Math.min(safeTotalPages - 1, currentPage + 1);
       i++
     ) {
       pages.push(i);
     }
 
-    if (page < totalPages - 2) pages.push("...");
+    if (currentPage < safeTotalPages - 2) pages.push("...");
 
-    pages.push(totalPages);
+    pages.push(safeTotalPages);
+
     return pages;
   };
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-5 py-4">
-      <span className="text-xs text-gray-400">ทั้งหมด {totalItems} รายการ</span>
+      <span className="text-xs text-gray-400">
+        ทั้งหมด {totalItems} รายการ
+      </span>
 
       <div className="ml-auto flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2 text-xs text-gray-400">
           <select
             value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setPage(1);
+            onChange={(event) => {
+              onPageSizeChange(Number(event.target.value));
             }}
             className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 outline-none"
           >
-            {PAGE_SIZE_OPTIONS.map((size) => (
+            {pageSizeOptions.map((size) => (
               <option key={size} value={size}>
                 {size} / หน้า
               </option>
@@ -71,16 +77,11 @@ export default function Pagination({
             type="number"
             value={goTo}
             min={1}
-            max={totalPages}
-            onChange={(e) => setGoTo(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const nextPage = Math.min(
-                  totalPages,
-                  Math.max(1, Number(goTo || 1)),
-                );
-                setPage(nextPage);
-                setGoTo("");
+            max={safeTotalPages}
+            onChange={(event) => onGoToChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                onGoToSubmit();
               }
             }}
             className="w-12 rounded-lg border border-gray-200 bg-white px-2 py-1 text-center text-gray-700 outline-none focus:border-blue-400"
@@ -92,41 +93,43 @@ export default function Pagination({
         <div className="flex items-center gap-1">
           <button
             type="button"
-            disabled={page === 1}
-            onClick={() => setPage((p) => Number(p) - 1)}
+            disabled={currentPage === 1}
+            onClick={() => onPageChange((prev) => Math.max(1, Number(prev) - 1))}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
           >
             ‹
           </button>
 
-          {range().map((p, i) =>
-            p === "..." ? (
+          {range().map((pageItem, index) =>
+            pageItem === "..." ? (
               <span
-                key={`dots-${i}`}
+                key={`dots-${index}`}
                 className="flex h-8 w-8 items-center justify-center text-sm text-gray-400"
               >
                 ···
               </span>
             ) : (
               <button
-                key={p}
+                key={pageItem}
                 type="button"
-                onClick={() => setPage(p as number)}
+                onClick={() => onPageChange(pageItem)}
                 className={`flex h-8 w-8 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
-                  page === p
+                  currentPage === pageItem
                     ? "border-blue-500 bg-blue-500 text-white"
                     : "border-gray-200 text-gray-600 hover:bg-gray-50"
                 }`}
               >
-                {p}
+                {pageItem}
               </button>
             ),
           )}
 
           <button
             type="button"
-            disabled={page === totalPages || totalPages === 0}
-            onClick={() => setPage((p) => Number(p) + 1)}
+            disabled={currentPage === safeTotalPages || totalPages === 0}
+            onClick={() =>
+              onPageChange((prev) => Math.min(safeTotalPages, Number(prev) + 1))
+            }
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
           >
             ›

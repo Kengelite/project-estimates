@@ -1382,3 +1382,599 @@ export async function DeleteDataCourse(id: string) {
     throw message;
   }
 }
+
+/* =========================
+   SUBJECT
+========================= */
+
+export async function GetDataSubject() {
+  try {
+    const response = await axios.get(`${api}/api/subjects`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data || [];
+  } catch (error: any) {
+    console.error("Error fetching subjects:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลรายวิชาได้";
+    throw message;
+  }
+}
+
+export async function GetDataSubjectById(id: string) {
+  try {
+    const response = await axios.get(`${api}/api/subjects/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data || null;
+  } catch (error: any) {
+    console.error("Error fetching subject by id:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลรายวิชาได้";
+    throw message;
+  }
+}
+
+export async function AddDataSubject(data: {
+  yearId: number;
+  studentYearId: number;
+  semesterId: number;
+  subjectOutsideId: string;
+  subjectCode: string;
+  subjectName: string;
+  status: string;
+  subjectCourses: {
+    courseId: string;
+    pricePerStudent: number;
+    registeredCount: number;
+    status: string;
+  }[];
+}) {
+  try {
+    const response = await axios.post(`${api}/api/subjects`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error adding subject:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถเพิ่มข้อมูลรายวิชาได้";
+    throw message;
+  }
+}
+
+export async function EditDataSubject(
+  id: string,
+  data: {
+    yearId: number;
+    studentYearId: number;
+    semesterId: number;
+    subjectCode: string;
+    subjectName: string;
+    status: string;
+    subjectCourses: {
+      courseId: string;
+      pricePerStudent: number;
+      registeredCount: number;
+      status: string;
+    }[];
+  }
+) {
+  try {
+    const response = await axios.put(`${api}/api/subjects/${id}`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating subject:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถแก้ไขข้อมูลรายวิชาได้";
+    throw message;
+  }
+}
+
+export async function UpdateDataSubjectStatus(
+  id: string,
+  data: {
+    status: string;
+  }
+) {
+  try {
+    const response = await axios.patch(`${api}/api/subjects/${id}/status`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating subject status:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถอัปเดตสถานะรายวิชาได้";
+    throw message;
+  }
+}
+
+export async function DeleteDataSubject(id: string) {
+  try {
+    const response = await axios.delete(`${api}/api/subjects/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error deleting subject:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถลบข้อมูลรายวิชาได้";
+    throw message;
+  }
+}
+
+export async function UpdateDataSubject(
+  id: string,
+  data: {
+    yearId: number;
+    studentYearId: number;
+    semesterId: number;
+    subjectCode: string;
+    subjectName: string;
+    status?: string;
+    subjectCourses?: {
+      courseId: string;
+      pricePerStudent: number;
+      registeredCount: number;
+      status: string;
+    }[];
+  }
+) {
+  try {
+    const response = await axios.put(`${api}/api/subjects/${id}`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating subject:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถแก้ไขข้อมูลรายวิชาได้";
+    throw message;
+  }
+}
+
+export async function UpdateDataSubjectCourse(
+  id: string,
+  data: {
+    courseId?: string;
+    pricePerStudent: number;
+    registeredCount: number;
+    status?: string;
+  }
+) {
+  try {
+    const response = await axios.patch(`${api}/api/subject-courses/${id}`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating subject course:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถแก้ไขข้อมูลหลักสูตรของรายวิชาได้";
+    throw message;
+  }
+}
+
+export async function DeleteDataSubjectCourse(id: string) {
+  try {
+    const response = await axios.delete(`${api}/api/subject-courses/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error deleting subject course:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถลบข้อมูลหลักสูตรของรายวิชาได้";
+    throw message;
+  }
+}
+
+/* =========================
+   SPLIT GROUP
+========================= */
+
+export async function GetDataSplitGroup() {
+  try {
+    const response = await axios.get(`${api}/api/split-groups`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data ?? [];
+  } catch (error: any) {
+    console.error("Error fetching split groups:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลกลุ่มสัดส่วนได้";
+    throw message;
+  }
+}
+
+export async function GetDataActiveSplitGroup() {
+  try {
+    const response = await axios.get(`${api}/api/split-groups/active`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data ?? [];
+  } catch (error: any) {
+    console.error("Error fetching active split groups:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลกลุ่มสัดส่วนที่เปิดใช้งานได้";
+    throw message;
+  }
+}
+
+export async function AddDataSplitGroup(data: {
+  name: string;
+  description?: string;
+  status: string;
+}) {
+  try {
+    const response = await axios.post(`${api}/api/split-groups`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error creating split group:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถเพิ่มข้อมูลกลุ่มการแบ่งสัดส่วนได้";
+    throw message;
+  }
+}
+
+export async function EditDataSplitGroup(
+  id: string,
+  data: {
+    name: string;
+    description?: string;
+    status: string;
+  },
+) {
+  try {
+    const response = await axios.put(`${api}/api/split-groups/${id}`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating split group:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถแก้ไขข้อมูลกลุ่มการแบ่งสัดส่วนได้";
+    throw message;
+  }
+}
+
+export async function EditStatusSplitGroup(id: string, status: string) {
+  try {
+    const response = await axios.patch(
+      `${api}/api/split-groups/${id}/status`,
+      { status },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating split group status:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถอัปเดตสถานะกลุ่มการแบ่งสัดส่วนได้";
+    throw message;
+  }
+}
+
+export async function DeleteDataSplitGroup(id: string) {
+  try {
+    const response = await axios.delete(`${api}/api/split-groups/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error deleting split group:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถลบข้อมูลกลุ่มการแบ่งสัดส่วนได้";
+    throw message;
+  }
+}
+
+/* =========================
+   ANNUAL BUDGET SUMMARY
+========================= */
+
+export async function GetDataAnnualBudgetSummary() {
+  try {
+    const response = await axios.get(`${api}/api/annual-budget-summaries`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data ?? [];
+  } catch (error: any) {
+    console.error("Error fetching annual budget summaries:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลสรุปงบประมาณได้";
+    throw message;
+  }
+}
+
+export async function GetDataAnnualBudgetSummaryByID(id: string) {
+  try {
+    const response = await axios.get(`${api}/api/annual-budget-summaries/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data;
+  } catch (error: any) {
+    console.error("Error fetching annual budget summary:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลสรุปงบประมาณได้";
+    throw message;
+  }
+}
+
+export async function AddDataAnnualBudgetSummary(data: {
+  yearId: string;
+  summaryType: "yearly" | "semester";
+  semesterId?: string | null;
+  totalUniversityWorkAmount: number;
+  totalCurriculumAmount: number;
+  status: string;
+  createdById?: string | null;
+  courses: {
+    courseId?: string | null;
+    courseNameSnapshot: string;
+    courseShortNameSnapshot: string;
+    sectionTitleSnapshot: string;
+    initialAmount: number;
+    step2DeductAmount: number;
+    step2RemainingAmount: number;
+    step3DeductAmount: number;
+    step3RemainingAmount: number;
+    step4DeductAmount: number;
+    step4RemainingAmount: number;
+    step5DeductAmount: number;
+    step5RemainingAmount: number;
+    step6DeductAmount: number;
+    finalRemainingAmount: number;
+    details: {
+      step: "step4" | "step5" | "step6";
+      refType: "fund" | "central" | "university_work";
+      refId?: string | null;
+      nameSnapshot: string;
+      percent: number;
+      deductAmount: number;
+    }[];
+  }[];
+}) {
+  try {
+    const response = await axios.post(`${api}/api/annual-budget-summaries`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error creating annual budget summary:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถบันทึกสรุปงบประมาณได้";
+    throw message;
+  }
+}
+
+export async function DeleteDataAnnualBudgetSummary(id: string) {
+  try {
+    const response = await axios.delete(`${api}/api/annual-budget-summaries/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error deleting annual budget summary:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถลบข้อมูลสรุปงบประมาณได้";
+    throw message;
+  }
+}
+
+export async function UpdateStatusAnnualBudgetSummary(
+  id: string,
+  status: string,
+) {
+  try {
+    const response = await axios.patch(
+      `${api}/api/annual-budget-summaries/${id}/status`,
+      { status },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating annual budget summary status:", error);
+    const message =
+      error.response?.data?.message ||
+      "ไม่สามารถอัปเดตสถานะสรุปงบประมาณได้";
+    throw message;
+  }
+}
+
+
+// user
+
+
+export async function GetDataUser() {
+  try {
+    const response = await axios.get(`${api}/api/users`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data || response.data;
+  } catch (error: any) {
+    console.error("Error fetching users:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลผู้ใช้งานได้";
+    throw message;
+  }
+}
+
+export async function GetDataRole() {
+  try {
+    const response = await axios.get(`${api}/api/roles`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data?.data || response.data;
+  } catch (error: any) {
+    console.error("Error fetching roles:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถดึงข้อมูลบทบาทได้";
+    throw message;
+  }
+}
+
+export async function AddDataUser(data: {
+  fname: string;
+  lname: string;
+  email: string;
+  pwd: string;
+  roleId: string;
+}) {
+  try {
+    const response = await axios.post(`${api}/api/users`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error creating user:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถเพิ่มข้อมูลผู้ใช้งานได้";
+    throw message;
+  }
+}
+
+export async function EditDataUser(
+  id: string,
+  data: {
+    fname: string;
+    lname: string;
+    email: string;
+    roleId: string;
+    pwd?: string;
+  },
+) {
+  try {
+    const response = await axios.put(`${api}/api/users/${id}`, data, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating user:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถแก้ไขข้อมูลผู้ใช้งานได้";
+    throw message;
+  }
+}
+
+export async function DeleteDataUser(id: string) {
+  try {
+    const response = await axios.delete(`${api}/api/users/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error deleting user:", error);
+    const message =
+      error.response?.data?.message || "ไม่สามารถลบข้อมูลผู้ใช้งานได้";
+    throw message;
+  }
+}

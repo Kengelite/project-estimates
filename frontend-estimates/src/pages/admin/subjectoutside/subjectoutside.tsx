@@ -20,6 +20,27 @@ const emptyForm: SubjectOutsideFormData = {
   subjectName: "",
 };
 
+type SortKey = "subjectCode" | "subjectName" | "status";
+type SortOrder = "asc" | "desc";
+
+type SortConfig = {
+  key: SortKey;
+  order: SortOrder;
+};
+
+type SubjectOutsideApiItem = {
+  id?: string | number;
+  ID?: string | number;
+  subjectCode?: string;
+  subject_code?: string;
+  SubjectCode?: string;
+  subjectName?: string;
+  subject_name?: string;
+  SubjectName?: string;
+  status?: string | number | boolean;
+  Status?: string | number | boolean;
+};
+
 function SearchIcon() {
   return (
     <svg
@@ -36,6 +57,39 @@ function SearchIcon() {
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
+  );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  sortKey: SortKey;
+  sortConfig: SortConfig;
+  onSort: (key: SortKey) => void;
+  align?: "left" | "center";
+}) {
+  const isActive = sortConfig.key === sortKey;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`inline-flex items-center gap-1 text-xs font-semibold text-gray-600 transition-colors hover:text-blue-600 ${align === "center" ? "justify-center" : "justify-start"
+        }`}
+    >
+      <span>{label}</span>
+
+      {isActive && (
+        <span className="text-[10px] text-gray-400">
+          {sortConfig.order === "desc" ? "▼" : "▲"}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -90,30 +144,51 @@ function StatusSwitch({
     <button
       type="button"
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-        checked ? "bg-emerald-500" : "bg-gray-300"
-      }`}
+      className={`relative inline-flex h-8 w-[64px] items-center rounded-full px-1 transition-colors ${checked ? "bg-emerald-500" : "bg-gray-300"
+        }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
-      <span className="absolute left-2 text-[10px] font-medium text-white">
-        {checked ? "เปิด" : ""}
+        className={`absolute text-[11px] font-bold text-white transition-all ${checked ? "left-2" : "right-2"
+          }`}
+      >
+        {checked ? "เปิด" : "ปิด"}
       </span>
+
+      <span
+        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[32px]" : "translate-x-0"
+          }`}
+      />
     </button>
   );
 }
 
-type SubjectOutsideApiItem = {
-  id: string;
-  subjectCode?: string;
-  subject_code?: string;
-  subjectName?: string;
-  subject_name?: string;
-  status?: string;
-};
+function pickArrayFromResponse<T>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.Data)) return response.Data;
+  if (Array.isArray(response?.items)) return response.items;
+  if (Array.isArray(response?.result)) return response.result;
+  if (Array.isArray(response?.results)) return response.results;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response?.data?.items)) return response.data.items;
+
+  return [];
+}
+
+function getStatusBoolean(status: any) {
+  return String(status ?? "1") === "1" || status === true;
+}
+
+function compareText(a: string, b: string) {
+  return String(a || "").localeCompare(String(b || ""), "th", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function compareBoolean(a: boolean, b: boolean) {
+  return Number(a) - Number(b);
+}
 
 export default function SubjectOutsideManagement() {
   const [items, setItems] = useState<SubjectOutsideItem[]>([]);
@@ -124,29 +199,53 @@ export default function SubjectOutsideManagement() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "subjectCode",
+    order: "asc",
+  });
+
   const [showFormModal, setShowFormModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<SubjectOutsideItem | null>(null);
-  const [deletingItem, setDeletingItem] = useState<SubjectOutsideItem | null>(null);
-  const [formData, setFormData] = useState<SubjectOutsideFormData>(emptyForm);
+  const [editingItem, setEditingItem] =
+    useState<SubjectOutsideItem | null>(null);
+  const [deletingItem, setDeletingItem] =
+    useState<SubjectOutsideItem | null>(null);
+  const [formData, setFormData] =
+    useState<SubjectOutsideFormData>(emptyForm);
+
+  const mapSubjectOutsideToItem = (
+    item: SubjectOutsideApiItem,
+  ): SubjectOutsideItem => {
+    return {
+      id: String(item.id ?? item.ID ?? ""),
+      subjectCode:
+        item.subjectCode || item.subject_code || item.SubjectCode || "",
+      subjectName:
+        item.subjectName || item.subject_name || item.SubjectName || "",
+      isActive: getStatusBoolean(item.status ?? item.Status),
+    };
+  };
 
   const fetchSubjectOutsides = async () => {
     try {
       setLoading(true);
-      const list = await GetDataSubjectOutside();
+
+      const response = await GetDataSubjectOutside();
+      const list = pickArrayFromResponse<SubjectOutsideApiItem>(response);
 
       setItems(
-        (list || []).map((item: SubjectOutsideApiItem) => ({
-          id: item.id,
-          subjectCode: item.subjectCode || item.subject_code || "",
-          subjectName: item.subjectName || item.subject_name || "",
-          isActive: item.status === "1",
-        })),
+        list
+          .map((item) => mapSubjectOutsideToItem(item))
+          .filter(
+            (item) =>
+              Boolean(item.id) &&
+              (Boolean(item.subjectCode) || Boolean(item.subjectName)),
+          ),
       );
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
-        text: error || "ไม่สามารถดึงข้อมูลวิชานอกคณะได้",
+        text: error || "ไม่สามารถดึงข้อมูลรายวิชานอกคณะได้",
         confirmButtonColor: "#3b82f6",
       });
     } finally {
@@ -158,35 +257,83 @@ export default function SubjectOutsideManagement() {
     fetchSubjectOutsides();
   }, []);
 
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) {
+        return {
+          key,
+          order: "asc",
+        };
+      }
+
+      return {
+        key,
+        order: prev.order === "asc" ? "desc" : "asc",
+      };
+    });
+
+    setPage(1);
+  };
+
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
+
     if (!keyword) return items;
 
-    return items.filter(
-      (item) =>
+    return items.filter((item) => {
+      const statusText = item.isActive ? "เปิด" : "ปิด";
+
+      return (
         item.subjectCode.toLowerCase().includes(keyword) ||
-        item.subjectName.toLowerCase().includes(keyword),
-    );
+        item.subjectName.toLowerCase().includes(keyword) ||
+        statusText.toLowerCase().includes(keyword)
+      );
+    });
   }, [items, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const sortedItems = useMemo(() => {
+    const rows = [...filteredItems];
 
-  const paginatedItems = filteredItems.slice(
+    rows.sort((a, b) => {
+      let result = 0;
+
+      if (sortConfig.key === "subjectCode") {
+        result = compareText(a.subjectCode, b.subjectCode);
+      }
+
+      if (sortConfig.key === "subjectName") {
+        result = compareText(a.subjectName, b.subjectName);
+      }
+
+      if (sortConfig.key === "status") {
+        result = compareBoolean(a.isActive, b.isActive);
+      }
+
+      return sortConfig.order === "asc" ? result : -result;
+    });
+
+    return rows;
+  }, [filteredItems, sortConfig]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
+
+  const paginatedItems = sortedItems.slice(
     (page - 1) * pageSize,
     page * pageSize,
   );
 
-  const resetForm = () => setFormData(emptyForm);
+  const resetForm = () => {
+    setFormData(emptyForm);
+  };
 
   const handleFormChange = (
     field: keyof SubjectOutsideFormData,
     value: string,
   ) => {
     if (field === "subjectCode") {
-      const formatted = value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2);
       setFormData((prev) => ({
         ...prev,
-        subjectCode: formatted,
+        subjectCode: value.slice(0, 8).toUpperCase(),
       }));
       return;
     }
@@ -194,12 +341,15 @@ export default function SubjectOutsideManagement() {
     if (field === "subjectName") {
       setFormData((prev) => ({
         ...prev,
-        subjectName: value.slice(0, 100),
+        subjectName: value.slice(0, 255),
       }));
       return;
     }
 
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const validateForm = () => {
@@ -207,16 +357,16 @@ export default function SubjectOutsideManagement() {
       return "กรุณากรอกรหัสวิชานอกคณะ";
     }
 
-    if (formData.subjectCode.trim().length > 2) {
-      return "รหัสวิชานอกคณะต้องไม่เกิน 2 ตัวอักษร";
+    if (formData.subjectCode.trim().length > 8) {
+      return "รหัสวิชานอกคณะต้องไม่เกิน 8 ตัวอักษร";
     }
 
     if (!formData.subjectName.trim()) {
       return "กรุณากรอกชื่อวิชานอกคณะ";
     }
 
-    if (formData.subjectName.trim().length > 100) {
-      return "ชื่อวิชานอกคณะต้องไม่เกิน 100 ตัวอักษร";
+    if (formData.subjectName.trim().length > 255) {
+      return "ชื่อวิชานอกคณะต้องไม่เกิน 255 ตัวอักษร";
     }
 
     return null;
@@ -230,16 +380,18 @@ export default function SubjectOutsideManagement() {
 
   const handleOpenEdit = (item: SubjectOutsideItem) => {
     setEditingItem(item);
+
     setFormData({
       subjectCode: item.subjectCode,
       subjectName: item.subjectName,
     });
+
     setShowFormModal(true);
   };
 
   const handleSubmit = async () => {
-    const codeValue = formData.subjectCode.trim().toUpperCase();
-    const nameValue = formData.subjectName.trim();
+    const subjectCode = formData.subjectCode.trim().toUpperCase();
+    const subjectName = formData.subjectName.trim();
     const errorMessage = validateForm();
 
     if (errorMessage) {
@@ -255,9 +407,9 @@ export default function SubjectOutsideManagement() {
     const confirmResult = await Swal.fire({
       icon: "question",
       title: editingItem ? "ยืนยันการแก้ไขข้อมูล" : "ยืนยันการบันทึกข้อมูล",
-      html: editingItem
-        ? `ต้องการแก้ไขรหัสวิชา <b>${codeValue}</b><br/> <b>${nameValue}</b> ใช่หรือไม่`
-        : `ต้องการบันทึกรหัสวิชา <b>${codeValue}</b><br/> <b>${nameValue}</b> ใช่หรือไม่`,
+      text: editingItem
+        ? `ต้องการแก้ไขรายวิชานอกคณะ ${subjectCode} ${subjectName} ใช่หรือไม่`
+        : `ต้องการบันทึกรายวิชานอกคณะ ${subjectCode} ${subjectName} ใช่หรือไม่`,
       showCancelButton: true,
       confirmButtonText: "บันทึก",
       cancelButtonText: "ยกเลิก",
@@ -272,15 +424,15 @@ export default function SubjectOutsideManagement() {
       setSubmitting(true);
 
       if (editingItem) {
-        await EditDataSubjectOutside(editingItem.id, {
-          subjectCode: codeValue,
-          subjectName: nameValue,
+        await EditDataSubjectOutside(String(editingItem.id), {
+          subjectCode: subjectCode,
+          subjectName: subjectName,
           status: editingItem.isActive ? "1" : "0",
         });
       } else {
         await AddDataSubjectOutside({
-          subjectCode: codeValue,
-          subjectName: nameValue,
+          subjectCode: subjectCode,
+          subjectName: subjectName,
           status: "1",
         });
       }
@@ -288,16 +440,17 @@ export default function SubjectOutsideManagement() {
       setShowFormModal(false);
       setEditingItem(null);
       resetForm();
-      await fetchSubjectOutsides();
 
       await Swal.fire({
         icon: "success",
         title: "สำเร็จ",
         text: editingItem
-          ? `แก้ไขข้อมูลวิชานอกคณะ "${codeValue}" เรียบร้อยแล้ว`
-          : `เพิ่มข้อมูลวิชานอกคณะ "${codeValue}" เรียบร้อยแล้ว`,
+          ? `แก้ไขรายวิชานอกคณะ "${subjectCode}" เรียบร้อยแล้ว`
+          : `เพิ่มรายวิชานอกคณะ "${subjectCode}" เรียบร้อยแล้ว`,
         confirmButtonColor: "#22c55e",
       });
+
+      await fetchSubjectOutsides();
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -316,7 +469,7 @@ export default function SubjectOutsideManagement() {
     const confirmResult = await Swal.fire({
       icon: "warning",
       title: "ยืนยันการลบข้อมูล",
-      text: `ต้องการลบข้อมูลรหัสวิชา "${deletingItem.subjectCode}" ใช่หรือไม่`,
+      text: `ต้องการลบรายวิชานอกคณะ "${deletingItem.subjectCode} ${deletingItem.subjectName}" ใช่หรือไม่`,
       showCancelButton: true,
       confirmButtonText: "ลบข้อมูล",
       cancelButtonText: "ยกเลิก",
@@ -329,16 +482,19 @@ export default function SubjectOutsideManagement() {
 
     try {
       setSubmitting(true);
-      await DeleteDataSubjectOutside(deletingItem.id);
+
+      await DeleteDataSubjectOutside(String(deletingItem.id));
+
       setDeletingItem(null);
-      await fetchSubjectOutsides();
 
       await Swal.fire({
         icon: "success",
         title: "ลบสำเร็จ",
-        text: "ลบข้อมูลวิชานอกคณะเรียบร้อยแล้ว",
+        text: "ลบข้อมูลรายวิชานอกคณะเรียบร้อยแล้ว",
         confirmButtonColor: "#22c55e",
       });
+
+      await fetchSubjectOutsides();
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -358,7 +514,7 @@ export default function SubjectOutsideManagement() {
     const confirmResult = await Swal.fire({
       icon: "question",
       title: "ยืนยันการเปลี่ยนสถานะ",
-      text: `ต้องการ${nextStatusText}รหัสวิชา "${item.subjectCode}" ใช่หรือไม่`,
+      text: `ต้องการ${nextStatusText}รายวิชา "${item.subjectCode} ${item.subjectName}" ใช่หรือไม่`,
       showCancelButton: true,
       confirmButtonText: "บันทึก",
       cancelButtonText: "ยกเลิก",
@@ -370,13 +526,23 @@ export default function SubjectOutsideManagement() {
     if (!confirmResult.isConfirmed) return;
 
     try {
-      await EditStatusSubjectOutside(item.id, nextStatus);
-      await fetchSubjectOutsides();
+      await EditStatusSubjectOutside(String(item.id), nextStatus);
+
+      setItems((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? {
+              ...row,
+              isActive: nextStatus === "1",
+            }
+            : row,
+        ),
+      );
 
       await Swal.fire({
         icon: "success",
         title: "สำเร็จ",
-        text: `เปลี่ยนสถานะรหัสวิชา "${item.subjectCode}" เรียบร้อยแล้ว`,
+        text: `เปลี่ยนสถานะรายวิชา "${item.subjectCode}" เรียบร้อยแล้ว`,
         confirmButtonColor: "#22c55e",
       });
     } catch (error: any) {
@@ -390,10 +556,11 @@ export default function SubjectOutsideManagement() {
   };
 
   const handleFormKeyDown = async (
-    e: React.KeyboardEvent<HTMLDivElement>,
+    event: React.KeyboardEvent<HTMLDivElement>,
   ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+    if (event.key === "Enter") {
+      event.preventDefault();
+
       if (!submitting) {
         await handleSubmit();
       }
@@ -406,11 +573,15 @@ export default function SubjectOutsideManagement() {
         <nav className="mb-4 text-sm text-gray-400">
           <span className="cursor-pointer hover:text-gray-600">หน้าแรก</span>
           <span className="mx-2">›</span>
-          <span className="font-medium text-gray-700">จัดการรหัสวิชานอกคณะ</span>
+          <span className="font-medium text-gray-700">
+            จัดการรายวิชานอกคณะ
+          </span>
         </nav>
 
         <div className="mb-5 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">จัดการรหัสวิชานอกคณะ</h1>
+          <h1 className="text-xl font-bold text-gray-900">
+            จัดการรายวิชานอกคณะ
+          </h1>
 
           <button
             type="button"
@@ -430,7 +601,7 @@ export default function SubjectOutsideManagement() {
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            เพิ่มรหัสวิชา
+            เพิ่มรายวิชา
           </button>
         </div>
 
@@ -440,10 +611,11 @@ export default function SubjectOutsideManagement() {
               <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
                 <SearchIcon />
               </div>
+
               <input
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
+                onChange={(event) => {
+                  setSearch(event.target.value);
                   setPage(1);
                 }}
                 placeholder="ค้นหารหัสวิชา / ชื่อวิชา..."
@@ -455,28 +627,48 @@ export default function SubjectOutsideManagement() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] table-fixed text-sm">
               <colgroup>
-                <col className="w-[12%]" />
-                <col className="w-[18%]" />
+                <col className="w-[10%]" />
+                <col className="w-[22%]" />
                 <col className="w-[38%]" />
-                <col className="w-[16%]" />
-                <col className="w-[16%]" />
+                <col className="w-[15%]" />
+                <col className="w-[15%]" />
               </colgroup>
 
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-100">
-                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     ลำดับ
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
-                    รหัสวิชานอกคณะ
+
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600">
+                    <SortableHeader
+                      label="รหัสวิชานอกคณะ"
+                      sortKey="subjectCode"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                    />
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold tracking-wide text-gray-600">
-                    ชื่อวิชานอกคณะ
+
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600">
+                    <SortableHeader
+                      label="ชื่อวิชานอกคณะ"
+                      sortKey="subjectName"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                    />
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
-                    สถานะ
+
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
+                    <SortableHeader
+                      label="สถานะ"
+                      sortKey="status"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      align="center"
+                    />
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     จัดการ
                   </th>
                 </tr>
@@ -498,7 +690,7 @@ export default function SubjectOutsideManagement() {
                       colSpan={5}
                       className="py-16 text-center text-sm text-gray-400"
                     >
-                      ไม่พบข้อมูลวิชานอกคณะ
+                      ไม่พบข้อมูลรายวิชานอกคณะ
                     </td>
                   </tr>
                 ) : (
@@ -511,12 +703,12 @@ export default function SubjectOutsideManagement() {
                         {(page - 1) * pageSize + index + 1}
                       </td>
 
-                      <td className="px-6 py-5 text-center font-medium text-gray-800 uppercase">
-                        {item.subjectCode}
+                      <td className="px-6 py-5 text-left font-semibold text-gray-800">
+                        {item.subjectCode || "-"}
                       </td>
 
                       <td className="px-6 py-5 text-left font-medium text-gray-800">
-                        {item.subjectName}
+                        {item.subjectName || "-"}
                       </td>
 
                       <td className="px-6 py-5 text-center">
@@ -534,6 +726,7 @@ export default function SubjectOutsideManagement() {
                             type="button"
                             onClick={() => handleOpenEdit(item)}
                             disabled={submitting}
+                            title="แก้ไข"
                           >
                             <EditIcon />
                           </button>
@@ -542,6 +735,7 @@ export default function SubjectOutsideManagement() {
                             type="button"
                             onClick={() => setDeletingItem(item)}
                             disabled={submitting}
+                            title="ลบ"
                           >
                             <DeleteIcon />
                           </button>
@@ -558,7 +752,7 @@ export default function SubjectOutsideManagement() {
             page={page}
             totalPages={totalPages}
             pageSize={pageSize}
-            totalItems={filteredItems.length}
+            totalItems={sortedItems.length}
             setPage={setPage}
             setPageSize={setPageSize}
           />
@@ -567,7 +761,11 @@ export default function SubjectOutsideManagement() {
         {showFormModal && (
           <div onKeyDown={handleFormKeyDown}>
             <SubjectOutsideFormModal
-              title={editingItem ? "แก้ไขข้อมูลรหัสวิชานอกคณะ" : "เพิ่มรหัสวิชานอกคณะ"}
+              title={
+                editingItem
+                  ? "แก้ไขข้อมูลรายวิชานอกคณะ"
+                  : "เพิ่มรายวิชานอกคณะ"
+              }
               formData={formData}
               onChange={handleFormChange}
               onClose={() => {

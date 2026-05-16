@@ -1,73 +1,503 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import {
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
   EyeIcon,
   PencilIcon,
   TrashIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+import Pagination from "./Pagination";
+import {
+  GetDataAnnualBudgetSummary,
+  DeleteDataAnnualBudgetSummary,
+  UpdateStatusAnnualBudgetSummary,
+} from "../../../fetchapi/fetch_api_admin";
 
-interface BudgetSummaryItem {
-  id: number;
-  year: string;
-  semester: string;
+interface AnnualBudgetSummaryCourseDetail {
+  id?: string;
+  step?: string;
+  refType?: string;
+  refId?: string | null;
+  nameSnapshot?: string;
+  percent?: number;
+  deductAmount?: number;
 }
 
-const INITIAL_DATA: BudgetSummaryItem[] = [
-  { id: 1, year: "2569", semester: "1 (ภาคต้น)" },
-  { id: 2, year: "2568", semester: "-" },
-];
+interface AnnualBudgetSummaryCourse {
+  id?: string;
+  courseId?: string | null;
+  courseNameSnapshot?: string;
+  courseShortNameSnapshot?: string;
+  sectionTitleSnapshot?: string;
+  initialAmount?: number;
+  step2DeductAmount?: number;
+  step2RemainingAmount?: number;
+  step3DeductAmount?: number;
+  step3RemainingAmount?: number;
+  step4DeductAmount?: number;
+  step4RemainingAmount?: number;
+  step5DeductAmount?: number;
+  step5RemainingAmount?: number;
+  step6DeductAmount?: number;
+  finalRemainingAmount?: number;
+  details?: AnnualBudgetSummaryCourseDetail[];
+}
+
+interface AnnualBudgetSummaryItem {
+  id: string;
+  yearId?: string | number;
+  year?: {
+    id?: string | number;
+    year?: string | number;
+    name?: string;
+  } | null;
+  summaryType?: "yearly" | "semester" | string;
+  semesterId?: string | number | null;
+  semester?: {
+    id?: string | number;
+    name?: string;
+    semester?: string | number;
+  } | null;
+  totalUniversityWorkAmount?: number;
+  totalCurriculumAmount?: number;
+  status?: string | number;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+  courses?: AnnualBudgetSummaryCourse[];
+}
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+function formatDateTime(value?: string) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleString("th-TH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function pickArrayFromResponse(response: any): AnnualBudgetSummaryItem[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.Data)) return response.Data;
+  if (Array.isArray(response?.items)) return response.items;
+  if (Array.isArray(response?.result)) return response.result;
+  if (Array.isArray(response?.results)) return response.results;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response?.data?.items)) return response.data.items;
+  return [];
+}
+
+function getYearLabel(item: AnnualBudgetSummaryItem) {
+  return String(item.year?.year ?? item.year?.name ?? item.yearId ?? "-");
+}
+
+function getSemesterLabel(item: AnnualBudgetSummaryItem) {
+  if (item.summaryType === "yearly") return "-";
+
+  return String(
+    item.semester?.name ??
+      item.semester?.semester ??
+      item.semesterId ??
+      "-",
+  );
+}
+
+function getSummaryTypeLabel(item: AnnualBudgetSummaryItem) {
+  if (item.summaryType === "semester") return "แบบแยกภาคการศึกษา";
+  return "แบบรายปี";
+}
+
+function isActiveStatus(status?: string | number) {
+  return String(status ?? "1") === "1";
+}
+
+function getStatusText(status?: string | number) {
+  return isActiveStatus(status) ? "เปิด" : "ปิด";
+}
+
+function StatusToggle({
+  checked,
+  disabled,
+  onClick,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`relative inline-flex h-8 w-[64px] items-center rounded-full px-1 transition-colors ${
+        checked ? "bg-emerald-500" : "bg-gray-300"
+      } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+    >
+      <span
+        className={`absolute text-[11px] font-bold text-white transition-all ${
+          checked ? "left-2" : "right-2"
+        }`}
+      >
+        {checked ? "เปิด" : "ปิด"}
+      </span>
+
+      <span
+        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+          checked ? "translate-x-[32px]" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
+function EditInfoModal({
+  item,
+  onClose,
+  onCreateRevision,
+}: {
+  item: AnnualBudgetSummaryItem;
+  onClose: () => void;
+  onCreateRevision: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">
+              แก้ไขสรุปข้อมูลงบประมาณ
+            </h2>
+
+            <p className="mt-1 text-sm leading-6 text-gray-400">
+              รายการนี้เป็นข้อมูลที่คำนวณและบันทึกแล้ว
+              หากต้องการแก้ไขยอด แนะนำให้สร้างฉบับแก้ไขจากเมนูสรุปงบประมาณประจำปี
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-2 rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+          <div className="flex justify-between gap-4">
+            <span>ปี</span>
+            <span className="font-bold text-gray-800">{getYearLabel(item)}</span>
+          </div>
+
+          <div className="flex justify-between gap-4">
+            <span>เทอม</span>
+            <span className="font-bold text-gray-800">
+              {getSemesterLabel(item)}
+            </span>
+          </div>
+
+          <div className="flex justify-between gap-4">
+            <span>วันที่บันทึก</span>
+            <span className="font-bold text-gray-800">
+              {formatDateTime(item.created_at || item.createdAt)}
+            </span>
+          </div>
+
+          <div className="flex justify-between gap-4">
+            <span>สถานะ</span>
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                isActiveStatus(item.status)
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {getStatusText(item.status)}
+            </span>
+          </div>
+
+          <div className="flex justify-between gap-4">
+            <span>จำนวนหลักสูตร</span>
+            <span className="font-bold text-blue-600">
+              {item.courses?.length || 0} หลักสูตร
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            ยกเลิก
+          </button>
+
+          <button
+            type="button"
+            onClick={onCreateRevision}
+            className="flex-1 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            สร้างฉบับแก้ไข
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function BudgetSummaryManagement() {
   const navigate = useNavigate();
 
-  const [data, setData] = useState<BudgetSummaryItem[]>(INITIAL_DATA);
+  const [data, setData] = useState<AnnualBudgetSummaryItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [goTo, setGoTo] = useState("");
 
-  const filtered = data.filter(
-    (d) => d.year.includes(search) || d.semester.includes(search),
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const [editingItem, setEditingItem] =
+    useState<AnnualBudgetSummaryItem | null>(null);
 
-  const handleDelete = (id: number) => {
-    if (!confirm("ต้องการลบรายการนี้ใช่หรือไม่?")) return;
-    setData((prev) => prev.filter((d) => d.id !== id));
+  const loadData = async () => {
+    try {
+      setLoading(true);
+
+      const response = await GetDataAnnualBudgetSummary();
+      const items = pickArrayFromResponse(response);
+
+      setData(items);
+      setPage(1);
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        text: error?.message || error || "ไม่สามารถดึงข้อมูลสรุปงบประมาณได้",
+        confirmButtonColor: "#2563eb",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleView = (year: string) => {
-    navigate("/annual-budget-management/view", {
-      state: { selectedYear: year },
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+
+    if (!keyword) return data;
+
+    return data.filter((item) => {
+      const year = getYearLabel(item).toLowerCase();
+      const semester = getSemesterLabel(item).toLowerCase();
+      const type = getSummaryTypeLabel(item).toLowerCase();
+      const status = getStatusText(item.status).toLowerCase();
+      const createdAt = formatDateTime(
+        item.created_at || item.createdAt,
+      ).toLowerCase();
+
+      return (
+        year.includes(keyword) ||
+        semester.includes(keyword) ||
+        type.includes(keyword) ||
+        status.includes(keyword) ||
+        createdAt.includes(keyword)
+      );
+    });
+  }, [data, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  const paginated = useMemo(() => {
+    return filtered.slice((page - 1) * pageSize, page * pageSize);
+  }, [filtered, page, pageSize]);
+
+  const handleAdd = () => {
+    navigate("/annual-budget-summary");
+  };
+
+  const handleView = (item: AnnualBudgetSummaryItem) => {
+    navigate(`/annual-budget-management/detail/${item.id}`, {
+      state: {
+        summary: item,
+      },
     });
   };
 
-  const range = (): (number | "...")[] => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const handleEdit = (item: AnnualBudgetSummaryItem) => {
+    setEditingItem(item);
+  };
+
+  const handleCreateRevision = () => {
+    if (!editingItem) return;
+
+    navigate("/annual-budget-summary", {
+      state: {
+        mode: "revision",
+        sourceSummaryId: editingItem.id,
+        yearId: editingItem.yearId,
+        selectedYearId: editingItem.yearId,
+        selectedYear: editingItem.year,
+        summaryType: editingItem.summaryType || "yearly",
+        selectedSemesterId: editingItem.semesterId ?? null,
+        selectedSemesterName: getSemesterLabel(editingItem),
+      },
+    });
+  };
+
+  const handleToggleStatus = async (item: AnnualBudgetSummaryItem) => {
+    const oldStatus = isActiveStatus(item.status) ? "1" : "0";
+    const nextStatus = oldStatus === "1" ? "0" : "1";
+
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "ยืนยันการเปลี่ยนสถานะ",
+      text: `ต้องการ${nextStatus === "1" ? "เปิด" : "ปิด"}สรุปงบประมาณปี ${getYearLabel(
+        item,
+      )} ใช่หรือไม่?`,
+      showCancelButton: true,
+      confirmButtonText: "ยืนยัน",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#94a3b8",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setUpdatingStatusId(item.id);
+
+      await UpdateStatusAnnualBudgetSummary(item.id, nextStatus);
+
+      setData((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? {
+                ...row,
+                status: nextStatus,
+              }
+            : row,
+        ),
+      );
+
+      await Swal.fire({
+        icon: "success",
+        title: "อัปเดตสถานะสำเร็จ",
+        text: `เปลี่ยนสถานะเป็น${nextStatus === "1" ? "เปิด" : "ปิด"}แล้ว`,
+        confirmButtonColor: "#22c55e",
+        timer: 1200,
+        showConfirmButton: false,
+      });
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        text: error?.message || error || "ไม่สามารถอัปเดตสถานะได้",
+        confirmButtonColor: "#2563eb",
+      });
+    } finally {
+      setUpdatingStatusId(null);
     }
+  };
 
-    const pages: (number | "...")[] = [1];
+  const handleDelete = async (item: AnnualBudgetSummaryItem) => {
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "ยืนยันการลบข้อมูล",
+      text: `ต้องการลบสรุปข้อมูลงบประมาณปี ${getYearLabel(item)} ใช่หรือไม่?`,
+      showCancelButton: true,
+      confirmButtonText: "ลบข้อมูล",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#94a3b8",
+    });
 
-    if (page > 3) pages.push("...");
+    if (!result.isConfirmed) return;
 
-    for (
-      let i = Math.max(2, page - 1);
-      i <= Math.min(totalPages - 1, page + 1);
-      i++
-    ) {
-      pages.push(i);
+    try {
+      setDeletingId(item.id);
+
+      await DeleteDataAnnualBudgetSummary(item.id);
+
+      await Swal.fire({
+        icon: "success",
+        title: "ลบข้อมูลสำเร็จ",
+        text: "ลบข้อมูลสรุปงบประมาณเรียบร้อยแล้ว",
+        confirmButtonColor: "#22c55e",
+      });
+
+      await loadData();
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        text: error?.message || error || "ไม่สามารถลบข้อมูลได้",
+        confirmButtonColor: "#2563eb",
+      });
+    } finally {
+      setDeletingId(null);
     }
+  };
 
-    if (page < totalPages - 2) pages.push("...");
+  const handleDownload = (item: AnnualBudgetSummaryItem) => {
+    const payload = {
+      id: item.id,
+      yearId: item.yearId,
+      year: getYearLabel(item),
+      semesterId: item.semesterId,
+      semester: getSemesterLabel(item),
+      summaryType: item.summaryType,
+      status: item.status,
+      statusText: getStatusText(item.status),
+      createdAt: item.created_at || item.createdAt,
+      totalUniversityWorkAmount: item.totalUniversityWorkAmount,
+      totalCurriculumAmount: item.totalCurriculumAmount,
+      courses: item.courses || [],
+    };
 
-    pages.push(totalPages);
-    return pages;
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json;charset=utf-8",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `annual-budget-summary-${getYearLabel(item)}-${item.id}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePageSizeChange = (nextPageSize: number) => {
+    setPageSize(nextPageSize);
+    setPage(1);
+  };
+
+  const handleGoToSubmit = () => {
+    const nextPage = Math.min(totalPages, Math.max(1, Number(goTo || 1)));
+    setPage(nextPage);
+    setGoTo("");
   };
 
   return (
@@ -76,13 +506,21 @@ export default function BudgetSummaryManagement() {
         <nav className="mb-4 text-sm text-gray-400">
           <span className="cursor-pointer hover:text-gray-600">หน้าแรก</span>
           <span className="mx-2">›</span>
-          <span className="font-medium text-gray-700">สรุปข้อมูลงบประมาณ</span>
+          <span className="font-medium text-gray-700">
+            สรุปข้อมูลงบประมาณ
+          </span>
         </nav>
 
         <div className="mb-5 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">สรุปข้อมูลงบประมาณ</h1>
+          <h1 className="text-xl font-bold text-gray-900">
+            สรุปข้อมูลงบประมาณ
+          </h1>
 
-          <button className="flex items-center gap-1.5 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-600">
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="flex items-center gap-1.5 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-600"
+          >
             <svg
               width="14"
               height="14"
@@ -106,27 +544,31 @@ export default function BudgetSummaryManagement() {
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                 <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
               </div>
+
               <input
                 type="text"
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
+                onChange={(event) => {
+                  setSearch(event.target.value);
                   setPage(1);
                 }}
-                placeholder="ค้นหาปี / เทอม..."
+                placeholder="ค้นหาปี / เทอม / วันที่ / สถานะ..."
                 className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400"
               />
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] table-fixed text-sm">
+            <table className="w-full min-w-[1080px] table-fixed text-sm">
               <colgroup>
-                <col className="w-[10%]" />
-                <col className="w-[20%]" />
-                <col className="w-[28%]" />
+                <col className="w-[7%]" />
+                <col className="w-[13%]" />
+                <col className="w-[14%]" />
                 <col className="w-[16%]" />
-                <col className="w-[26%]" />
+                <col className="w-[16%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+                <col className="w-[14%]" />
               </colgroup>
 
               <thead>
@@ -134,15 +576,31 @@ export default function BudgetSummaryManagement() {
                   <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
                     ลำดับ
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
                     ปี
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
                     เทอม
                   </th>
+
+                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+                    ประเภท
+                  </th>
+
+                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+                    วันที่บันทึก
+                  </th>
+
+                  <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
+                    สถานะ
+                  </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
                     บันทึกไฟล์
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold tracking-wide text-gray-600">
                     จัดการ
                   </th>
@@ -150,35 +608,64 @@ export default function BudgetSummaryManagement() {
               </thead>
 
               <tbody className="divide-y divide-gray-100">
-                {paginated.length === 0 ? (
+                {loading ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={8}
+                      className="py-16 text-center text-sm text-gray-400"
+                    >
+                      กำลังโหลดข้อมูล...
+                    </td>
+                  </tr>
+                ) : paginated.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={8}
                       className="py-16 text-center text-sm text-gray-400"
                     >
                       ไม่พบข้อมูล
                     </td>
                   </tr>
                 ) : (
-                  paginated.map((row, i) => (
+                  paginated.map((row, index) => (
                     <tr
                       key={row.id}
                       className="transition-colors hover:bg-blue-50/30"
                     >
                       <td className="px-6 py-5 text-center text-sm font-medium text-gray-500">
-                        {(page - 1) * pageSize + i + 1}
+                        {(page - 1) * pageSize + index + 1}
                       </td>
 
                       <td className="px-6 py-5 text-center font-medium text-gray-800">
-                        {row.year}
+                        {getYearLabel(row)}
                       </td>
 
                       <td className="px-6 py-5 text-center text-gray-700">
-                        {row.semester}
+                        {getSemesterLabel(row)}
+                      </td>
+
+                      <td className="px-6 py-5 text-center text-gray-700">
+                        {getSummaryTypeLabel(row)}
+                      </td>
+
+                      <td className="px-6 py-5 text-center text-gray-500">
+                        {formatDateTime(row.created_at || row.createdAt)}
                       </td>
 
                       <td className="px-6 py-5 text-center">
-                        <button className="text-slate-500 transition-colors hover:text-blue-500">
+                        <StatusToggle
+                          checked={isActiveStatus(row.status)}
+                          disabled={updatingStatusId === row.id}
+                          onClick={() => handleToggleStatus(row)}
+                        />
+                      </td>
+
+                      <td className="px-6 py-5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(row)}
+                          className="text-slate-500 transition-colors hover:text-blue-500"
+                        >
                           <ArrowDownTrayIcon className="mx-auto h-5 w-5" />
                         </button>
                       </td>
@@ -186,19 +673,29 @@ export default function BudgetSummaryManagement() {
                       <td className="px-6 py-5">
                         <div className="flex items-center justify-center gap-4">
                           <button
-                            onClick={() => handleView(row.year)}
+                            type="button"
+                            onClick={() => handleView(row)}
                             className="text-blue-500 transition-colors hover:text-blue-700"
+                            title="ดูรายละเอียด"
                           >
                             <EyeIcon className="h-5 w-5" />
                           </button>
 
-                          <button className="text-slate-500 transition-colors hover:text-slate-700">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(row)}
+                            className="text-slate-500 transition-colors hover:text-slate-700"
+                            title="แก้ไข"
+                          >
                             <PencilIcon className="h-5 w-5" />
                           </button>
 
                           <button
-                            onClick={() => handleDelete(row.id)}
-                            className="text-red-500 transition-colors hover:text-red-700"
+                            type="button"
+                            onClick={() => handleDelete(row)}
+                            disabled={deletingId === row.id}
+                            className="text-red-500 transition-colors hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            title="ลบ"
                           >
                             <TrashIcon className="h-5 w-5" />
                           </button>
@@ -211,98 +708,28 @@ export default function BudgetSummaryManagement() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-5 py-4">
-            <span className="text-xs text-gray-400">
-              ทั้งหมด {filtered.length} รายการ
-            </span>
-
-            <div className="ml-auto flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setPage(1);
-                  }}
-                  className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 outline-none"
-                >
-                  {PAGE_SIZE_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s} / หน้า
-                    </option>
-                  ))}
-                </select>
-
-                <span>ไปที่หน้า</span>
-
-                <input
-                  type="number"
-                  value={goTo}
-                  min={1}
-                  max={totalPages}
-                  onChange={(e) => setGoTo(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const nextPage = Math.min(
-                        totalPages,
-                        Math.max(1, Number(goTo || 1)),
-                      );
-                      setPage(nextPage);
-                      setGoTo("");
-                    }
-                  }}
-                  className="w-14 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-center text-gray-700 outline-none focus:border-blue-400"
-                />
-
-                <span>หน้า</span>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => p - 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
-                >
-                  ‹
-                </button>
-
-                {range().map((p, i) =>
-                  p === "..." ? (
-                    <span
-                      key={`d${i}`}
-                      className="flex h-8 w-8 items-center justify-center text-sm text-gray-400"
-                    >
-                      ···
-                    </span>
-                  ) : (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p as number)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
-                        page === p
-                          ? "border-blue-500 bg-blue-500 text-white"
-                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ),
-                )}
-
-                <button
-                  type="button"
-                  disabled={page === totalPages || totalPages === 0}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
-                >
-                  ›
-                </button>
-              </div>
-            </div>
-          </div>
+          <Pagination
+            totalItems={filtered.length}
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            goTo={goTo}
+            onPageChange={setPage}
+            onPageSizeChange={handlePageSizeChange}
+            onGoToChange={setGoTo}
+            onGoToSubmit={handleGoToSubmit}
+          />
         </div>
       </div>
+
+      {editingItem && (
+        <EditInfoModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onCreateRevision={handleCreateRevision}
+        />
+      )}
     </div>
   );
 }

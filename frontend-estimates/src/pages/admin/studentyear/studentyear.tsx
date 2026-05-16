@@ -19,6 +19,14 @@ const emptyForm: StudentYearFormData = {
   studentYear: "",
 };
 
+type SortKey = "studentYear" | "status";
+type SortOrder = "asc" | "desc";
+
+type SortConfig = {
+  key: SortKey;
+  order: SortOrder;
+};
+
 function SearchIcon() {
   return (
     <svg
@@ -35,6 +43,39 @@ function SearchIcon() {
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
+  );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  sortKey: SortKey;
+  sortConfig: SortConfig;
+  onSort: (key: SortKey) => void;
+  align?: "left" | "center";
+}) {
+  const isActive = sortConfig.key === sortKey;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`inline-flex items-center gap-1 text-xs font-semibold text-gray-600 transition-colors hover:text-blue-600 ${align === "center" ? "justify-center" : "justify-start"
+        }`}
+    >
+      <span>{label}</span>
+
+      {isActive && (
+        <span className="text-[10px] text-gray-400">
+          {sortConfig.order === "desc" ? "▼" : "▲"}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -89,28 +130,61 @@ function StatusSwitch({
     <button
       type="button"
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-        checked ? "bg-emerald-500" : "bg-gray-300"
-      }`}
+      className={`relative inline-flex h-8 w-[64px] items-center rounded-full px-1 transition-colors ${checked ? "bg-emerald-500" : "bg-gray-300"
+        }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
-      <span className="absolute left-2 text-[10px] font-medium text-white">
-        {checked ? "เปิด" : ""}
+        className={`absolute text-[11px] font-bold text-white transition-all ${checked ? "left-2" : "right-2"
+          }`}
+      >
+        {checked ? "เปิด" : "ปิด"}
       </span>
+
+      <span
+        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[32px]" : "translate-x-0"
+          }`}
+      />
     </button>
   );
 }
 
 type StudentYearApiItem = {
-  id: number;
+  id?: number | string;
+  ID?: number | string;
   studentYear?: string;
   student_year?: string;
-  status?: string;
+  StudentYear?: string;
+  status?: string | number | boolean;
+  Status?: string | number | boolean;
 };
+
+function pickArrayFromResponse<T>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.Data)) return response.Data;
+  if (Array.isArray(response?.items)) return response.items;
+  if (Array.isArray(response?.result)) return response.result;
+  if (Array.isArray(response?.results)) return response.results;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response?.data?.items)) return response.data.items;
+
+  return [];
+}
+
+function getStatusBoolean(status: any) {
+  return String(status ?? "1") === "1" || status === true;
+}
+
+function compareStudentYear(a: string, b: string) {
+  const valueA = Number(a || 0);
+  const valueB = Number(b || 0);
+
+  return valueA - valueB;
+}
+
+function compareBoolean(a: boolean, b: boolean) {
+  return Number(a) - Number(b);
+}
 
 export default function StudentYearManagement() {
   const [items, setItems] = useState<StudentYearItem[]>([]);
@@ -120,24 +194,41 @@ export default function StudentYearManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "studentYear",
+    order: "asc",
+  });
 
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingItem, setEditingItem] = useState<StudentYearItem | null>(null);
-  const [deletingItem, setDeletingItem] = useState<StudentYearItem | null>(null);
+  const [deletingItem, setDeletingItem] = useState<StudentYearItem | null>(
+    null,
+  );
   const [formData, setFormData] = useState<StudentYearFormData>(emptyForm);
+
+  const mapStudentYearToItem = (
+    item: StudentYearApiItem,
+  ): StudentYearItem => {
+    return {
+      id: Number(item.id ?? item.ID ?? 0),
+      studentYear:
+        item.studentYear || item.student_year || item.StudentYear || "",
+      isActive: getStatusBoolean(item.status ?? item.Status),
+    };
+  };
 
   const fetchStudentYears = async () => {
     try {
       setLoading(true);
-      const list = await GetDataStudentYear();
+
+      const response = await GetDataStudentYear();
+      const list = pickArrayFromResponse<StudentYearApiItem>(response);
 
       setItems(
-        (list || []).map((item: StudentYearApiItem) => ({
-          id: item.id,
-          studentYear: item.studentYear || item.student_year || "",
-          isActive: item.status === "1",
-        })),
+        list
+          .map((item) => mapStudentYearToItem(item))
+          .filter((item) => Boolean(item.id) && Boolean(item.studentYear)),
       );
     } catch (error: any) {
       await Swal.fire({
@@ -155,37 +246,69 @@ export default function StudentYearManagement() {
     fetchStudentYears();
   }, []);
 
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) {
+        return {
+          key,
+          order: "asc",
+        };
+      }
+
+      return {
+        key,
+        order: prev.order === "asc" ? "desc" : "asc",
+      };
+    });
+
+    setPage(1);
+  };
+
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    const filtered = !keyword
-      ? [...items]
-      : items.filter((item) =>
-          item.studentYear.toLowerCase().includes(keyword),
-        );
+    if (!keyword) return items;
 
-    filtered.sort((a, b) => {
-      const valueA = Number(a.studentYear);
-      const valueB = Number(b.studentYear);
+    return items.filter((item) => {
+      const statusText = item.isActive ? "เปิด" : "ปิด";
 
-      if (sortOrder === "asc") {
-        return valueA - valueB;
+      return (
+        item.studentYear.toLowerCase().includes(keyword) ||
+        statusText.toLowerCase().includes(keyword)
+      );
+    });
+  }, [items, search]);
+
+  const sortedItems = useMemo(() => {
+    const rows = [...filteredItems];
+
+    rows.sort((a, b) => {
+      let result = 0;
+
+      if (sortConfig.key === "studentYear") {
+        result = compareStudentYear(a.studentYear, b.studentYear);
       }
 
-      return valueB - valueA;
+      if (sortConfig.key === "status") {
+        result = compareBoolean(a.isActive, b.isActive);
+      }
+
+      return sortConfig.order === "asc" ? result : -result;
     });
 
-    return filtered;
-  }, [items, search, sortOrder]);
+    return rows;
+  }, [filteredItems, sortConfig]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
 
-  const paginatedItems = filteredItems.slice(
+  const paginatedItems = sortedItems.slice(
     (page - 1) * pageSize,
     page * pageSize,
   );
 
-  const resetForm = () => setFormData(emptyForm);
+  const resetForm = () => {
+    setFormData(emptyForm);
+  };
 
   const handleFormChange = (
     field: keyof StudentYearFormData,
@@ -193,14 +316,19 @@ export default function StudentYearManagement() {
   ) => {
     if (field === "studentYear") {
       const onlyNumber = value.replace(/\D/g, "").slice(0, 1);
+
       setFormData((prev) => ({
         ...prev,
         studentYear: onlyNumber,
       }));
+
       return;
     }
 
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const validateForm = () => {
@@ -242,7 +370,7 @@ export default function StudentYearManagement() {
     if (errorMessage) {
       await Swal.fire({
         icon: "warning",
-        title: "กรอกข้อมูลไม่ถูกต้อง",
+        title: "กรอกข้อมูลไม่ครบ",
         text: errorMessage,
         confirmButtonColor: "#3b82f6",
       });
@@ -283,7 +411,6 @@ export default function StudentYearManagement() {
       setShowFormModal(false);
       setEditingItem(null);
       resetForm();
-      await fetchStudentYears();
 
       await Swal.fire({
         icon: "success",
@@ -293,6 +420,8 @@ export default function StudentYearManagement() {
           : `เพิ่มชั้นปี "${value}" เรียบร้อยแล้ว`,
         confirmButtonColor: "#22c55e",
       });
+
+      await fetchStudentYears();
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -324,9 +453,10 @@ export default function StudentYearManagement() {
 
     try {
       setSubmitting(true);
+
       await DeleteDataStudentYear(deletingItem.id);
+
       setDeletingItem(null);
-      await fetchStudentYears();
 
       await Swal.fire({
         icon: "success",
@@ -334,6 +464,8 @@ export default function StudentYearManagement() {
         text: "ลบข้อมูลชั้นปีเรียบร้อยแล้ว",
         confirmButtonColor: "#22c55e",
       });
+
+      await fetchStudentYears();
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -366,7 +498,17 @@ export default function StudentYearManagement() {
 
     try {
       await EditStatusStudentYear(item.id, nextStatus);
-      await fetchStudentYears();
+
+      setItems((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? {
+              ...row,
+              isActive: nextStatus === "1",
+            }
+            : row,
+        ),
+      );
 
       await Swal.fire({
         icon: "success",
@@ -385,10 +527,11 @@ export default function StudentYearManagement() {
   };
 
   const handleFormKeyDown = async (
-    e: React.KeyboardEvent<HTMLDivElement>,
+    event: React.KeyboardEvent<HTMLDivElement>,
   ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+    if (event.key === "Enter") {
+      event.preventDefault();
+
       if (!submitting) {
         await handleSubmit();
       }
@@ -435,10 +578,11 @@ export default function StudentYearManagement() {
               <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
                 <SearchIcon />
               </div>
+
               <input
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
+                onChange={(event) => {
+                  setSearch(event.target.value);
                   setPage(1);
                 }}
                 placeholder="ค้นหาชั้นปี..."
@@ -461,23 +605,26 @@ export default function StudentYearManagement() {
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     ลำดับ
                   </th>
+
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
-                      }
-                      className="flex items-center gap-1 text-xs font-semibold text-gray-600"
-                    >
-                      ชั้นปี
-                      <span className="text-[10px] text-gray-400">
-                        {sortOrder === "desc" ? "▼" : "▲"}
-                      </span>
-                    </button>
+                    <SortableHeader
+                      label="ชั้นปี"
+                      sortKey="studentYear"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                    />
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
-                    สถานะ
+                    <SortableHeader
+                      label="สถานะ"
+                      sortKey="status"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      align="center"
+                    />
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     จัดการ
                   </th>
@@ -514,7 +661,7 @@ export default function StudentYearManagement() {
                       </td>
 
                       <td className="px-6 py-5 text-left font-medium text-gray-800">
-                        ปี {item.studentYear}
+                        {item.studentYear}
                       </td>
 
                       <td className="px-6 py-5 text-center">
@@ -532,6 +679,7 @@ export default function StudentYearManagement() {
                             type="button"
                             onClick={() => handleOpenEdit(item)}
                             disabled={submitting}
+                            title="แก้ไข"
                           >
                             <EditIcon />
                           </button>
@@ -540,6 +688,7 @@ export default function StudentYearManagement() {
                             type="button"
                             onClick={() => setDeletingItem(item)}
                             disabled={submitting}
+                            title="ลบ"
                           >
                             <DeleteIcon />
                           </button>
@@ -556,7 +705,7 @@ export default function StudentYearManagement() {
             page={page}
             totalPages={totalPages}
             pageSize={pageSize}
-            totalItems={filteredItems.length}
+            totalItems={sortedItems.length}
             setPage={setPage}
             setPageSize={setPageSize}
           />

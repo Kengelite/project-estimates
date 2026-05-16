@@ -1,5 +1,13 @@
 import { ModalBase, CloseBtn } from "./ModalBase";
-import type { CurriculumItem } from "@/types/curriculum";
+
+type CurriculumItem = {
+  id: string;
+  name: string;
+  bachelorNormal: string;
+  bachelorSpecial: string;
+  graduate: string;
+  isActive: boolean;
+};
 
 interface DeleteCurriculumModalProps {
   item: CurriculumItem;
@@ -46,17 +54,17 @@ export default function DeleteCurriculumModal({
 
       <div className="bg-gray-50 rounded-xl px-4 py-3 mb-3 text-sm space-y-2">
         <p>
-          <span className="text-gray-400">ชื่อบริหาร : </span>
+          <span className="text-gray-400">ชื่อบริหารหลักสูตร : </span>
           <span className="text-gray-700">{item.name}</span>
         </p>
 
         <p>
-          <span className="text-gray-400">ป.ตรี(ปกติ) : </span>
+          <span className="text-gray-400">ป.ตรี (ปกติ) : </span>
           <span className="text-gray-700">{item.bachelorNormal}</span>
         </p>
 
         <p>
-          <span className="text-gray-400">ป.ตรี(พิเศษ) : </span>
+          <span className="text-gray-400">ป.ตรี (พิเศษ) : </span>
           <span className="text-gray-700">{item.bachelorSpecial}</span>
         </p>
 
@@ -72,12 +80,15 @@ export default function DeleteCurriculumModal({
 
       <div className="flex gap-2">
         <button
+          type="button"
           onClick={onClose}
           className="flex-1 border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 rounded-xl transition-colors"
         >
           ยกเลิก
         </button>
+
         <button
+          type="button"
           onClick={onConfirm}
           className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
         >

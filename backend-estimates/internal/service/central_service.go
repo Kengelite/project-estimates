@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -19,14 +20,15 @@ func NewCentralService(repo *repository.CentralRepository) *CentralService {
 }
 
 const (
-	CentralGroupBachelorNormal  = "bachelor_normal"
-	CentralGroupBachelorSpecial = "bachelor_special"
-	CentralGroupGraduate        = "graduate"
+	CentralGroupBachelorNormalName  = "ป.ตรี (ปกติ)"
+	CentralGroupBachelorSpecialName = "ป.ตรี (พิเศษ)"
+	CentralGroupGraduateName        = "บัณฑิต"
 )
 
 type CentralSplitInput struct {
-	SplitGroup string  `json:"splitGroup"`
-	PctSplit   float64 `json:"pctSplit"`
+	SplitGroupID string  `json:"splitGroupId"`
+	SplitGroup   string  `json:"splitGroup"`
+	PctSplit     float64 `json:"pctSplit"`
 }
 
 type CreateCentralInput struct {
@@ -45,16 +47,38 @@ type UpdateCentralStatusInput struct {
 	Status string `json:"status"`
 }
 
-type CentralResponse struct {
-	ID              string  `json:"id"`
-	Name            string  `json:"name"`
-	Status          string  `json:"status"`
-	BachelorNormal  float64 `json:"bachelorNormal"`
-	BachelorSpecial float64 `json:"bachelorSpecial"`
-	Graduate        float64 `json:"graduate"`
+type SplitGroupCentralResponse struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      int    `json:"status"`
 }
 
-func round__2(v float64) float64 {
+type CentralSplitResponse struct {
+	ID           string                    `json:"id"`
+	CentralID    string                    `json:"centralId"`
+	SplitGroupID string                    `json:"splitGroupId"`
+	SplitGroup   SplitGroupCentralResponse `json:"splitGroup"`
+	PctSplit     float64                   `json:"pctSplit"`
+}
+
+type CentralResponse struct {
+	ID              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	Status          string                 `json:"status"`
+	BachelorNormal  float64                `json:"bachelorNormal"`
+	BachelorSpecial float64                `json:"bachelorSpecial"`
+	Graduate        float64                `json:"graduate"`
+	Splits          []CentralSplitResponse `json:"splits"`
+}
+
+type resolvedCentralSplitInput struct {
+	SplitGroupID uuid.UUID
+	SplitGroup   models.SplitGroup
+	PctSplit     float64
+}
+
+func roundCentral2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
@@ -66,39 +90,139 @@ func normalizeStatus(value string) string {
 	return strings.TrimSpace(value)
 }
 
-func validCentralGroup(group string) bool {
-	switch group {
-	case CentralGroupBachelorNormal, CentralGroupBachelorSpecial, CentralGroupGraduate:
+func normalizeCentralGroupName(value string) string {
+	value = strings.TrimSpace(value)
+
+	switch value {
+	case "bachelor_normal", "bachelor normal", "normal", "ปกติ", "ตรีปกติ", "ป.ตรีปกติ", "ป.ตรี (ปกติ)":
+		return CentralGroupBachelorNormalName
+
+	case "bachelor_special", "bachelor special", "special", "พิเศษ", "ตรีพิเศษ", "ป.ตรีพิเศษ", "ป.ตรี (พิเศษ)":
+		return CentralGroupBachelorSpecialName
+
+	case "graduate", "grad", "บัณฑิต", "บัณฑิตศึกษา", "ป.โท", "ป.เอก":
+		return CentralGroupGraduateName
+
+	default:
+		return value
+	}
+}
+
+func validCentralGroupName(name string) bool {
+	switch name {
+	case CentralGroupBachelorNormalName, CentralGroupBachelorSpecialName, CentralGroupGraduateName:
 		return true
 	default:
 		return false
 	}
 }
 
-func normalizeSplits(inputs []CentralSplitInput) ([]CentralSplitInput, error) {
+func (s *CentralService) findSplitGroupByID(id uuid.UUID) (*models.SplitGroup, error) {
+	var item models.SplitGroup
+
+	err := s.Repo.DB.
+		Where("id = ?", id).
+		Where("deleted_at IS NULL").
+		Where("status = ?", 1).
+		First(&item).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &item, nil
+}
+
+func (s *CentralService) findSplitGroupByName(name string) (*models.SplitGroup, error) {
+	var item models.SplitGroup
+
+	err := s.Repo.DB.
+		Where("name = ?", name).
+		Where("deleted_at IS NULL").
+		Where("status = ?", 1).
+		First(&item).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &item, nil
+}
+
+func (s *CentralService) resolveSplitGroup(input CentralSplitInput) (*models.SplitGroup, error) {
+	splitGroupID := strings.TrimSpace(input.SplitGroupID)
+	splitGroupName := normalizeCentralGroupName(input.SplitGroup)
+
+	if splitGroupID != "" {
+		id, err := uuid.Parse(splitGroupID)
+		if err != nil {
+			return nil, errors.New("รหัสกลุ่มสัดส่วนไม่ถูกต้อง")
+		}
+
+		splitGroup, err := s.findSplitGroupByID(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("ไม่พบกลุ่มสัดส่วน")
+			}
+			return nil, err
+		}
+
+		splitGroup.Name = normalizeCentralGroupName(splitGroup.Name)
+
+		if !validCentralGroupName(splitGroup.Name) {
+			return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
+		}
+
+		return splitGroup, nil
+	}
+
+	if splitGroupName == "" {
+		return nil, errors.New("กรุณาระบุกลุ่มสัดส่วน")
+	}
+
+	if id, err := uuid.Parse(splitGroupName); err == nil {
+		splitGroup, err := s.findSplitGroupByID(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("ไม่พบกลุ่มสัดส่วน")
+			}
+			return nil, err
+		}
+
+		splitGroup.Name = normalizeCentralGroupName(splitGroup.Name)
+
+		if !validCentralGroupName(splitGroup.Name) {
+			return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
+		}
+
+		return splitGroup, nil
+	}
+
+	if !validCentralGroupName(splitGroupName) {
+		return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
+	}
+
+	splitGroup, err := s.findSplitGroupByName(splitGroupName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("ไม่พบกลุ่มสัดส่วน")
+		}
+		return nil, err
+	}
+
+	return splitGroup, nil
+}
+
+func (s *CentralService) normalizeSplits(inputs []CentralSplitInput) ([]resolvedCentralSplitInput, error) {
 	if len(inputs) == 0 {
 		return nil, errors.New("กรุณาระบุข้อมูลเปอร์เซ็นต์อย่างน้อย 1 รายการ")
 	}
 
 	seen := map[string]bool{}
-	result := make([]CentralSplitInput, 0, len(inputs))
+	result := make([]resolvedCentralSplitInput, 0, len(inputs))
 
 	for _, input := range inputs {
-		input.SplitGroup = strings.TrimSpace(input.SplitGroup)
-		input.PctSplit = round__2(input.PctSplit)
-
-		if input.SplitGroup == "" {
-			return nil, errors.New("กรุณาระบุกลุ่มสัดส่วน")
-		}
-
-		if !validCentralGroup(input.SplitGroup) {
-			return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
-		}
-
-		if seen[input.SplitGroup] {
-			return nil, errors.New("พบกลุ่มสัดส่วนซ้ำ")
-		}
-		seen[input.SplitGroup] = true
+		input.PctSplit = roundCentral2(input.PctSplit)
 
 		if input.PctSplit < 0 {
 			return nil, errors.New("เปอร์เซ็นต์หักแบ่งต้องไม่น้อยกว่า 0")
@@ -108,33 +232,75 @@ func normalizeSplits(inputs []CentralSplitInput) ([]CentralSplitInput, error) {
 			return nil, errors.New("เปอร์เซ็นต์หักแบ่งต้องไม่เกิน 100")
 		}
 
-		result = append(result, input)
+		splitGroup, err := s.resolveSplitGroup(input)
+		if err != nil {
+			return nil, err
+		}
+
+		groupName := normalizeCentralGroupName(splitGroup.Name)
+
+		if !validCentralGroupName(groupName) {
+			return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
+		}
+
+		if seen[groupName] {
+			return nil, errors.New("พบกลุ่มสัดส่วนซ้ำ")
+		}
+
+		seen[groupName] = true
+
+		result = append(result, resolvedCentralSplitInput{
+			SplitGroupID: splitGroup.ID,
+			SplitGroup:   *splitGroup,
+			PctSplit:     input.PctSplit,
+		})
 	}
 
 	requiredGroups := []string{
-		CentralGroupBachelorNormal,
-		CentralGroupBachelorSpecial,
-		CentralGroupGraduate,
+		CentralGroupBachelorNormalName,
+		CentralGroupBachelorSpecialName,
+		CentralGroupGraduateName,
 	}
 
 	for _, group := range requiredGroups {
 		if !seen[group] {
-			return nil, errors.New("ข้อมูลสัดส่วนไม่ครบ กรุณาระบุ ตรี(ปกติ) ตรี(พิเศษ) และบัณฑิต")
+			return nil, errors.New("ข้อมูลสัดส่วนไม่ครบ กรุณาระบุ ป.ตรี (ปกติ), ป.ตรี (พิเศษ) และบัณฑิต")
 		}
 	}
 
 	return result, nil
 }
 
-func buildSplitModels(inputs []CentralSplitInput) []models.CentralSplit {
+func buildSplitModels(inputs []resolvedCentralSplitInput) []models.CentralSplit {
 	result := make([]models.CentralSplit, 0, len(inputs))
+
 	for _, input := range inputs {
 		result = append(result, models.CentralSplit{
-			SplitGroup: input.SplitGroup,
-			PctSplit:   input.PctSplit,
+			SplitGroupID: input.SplitGroupID,
+			PctSplit:     input.PctSplit,
 		})
 	}
+
 	return result
+}
+
+func mapSplitGroupResponse(item models.SplitGroup) SplitGroupCentralResponse {
+	return SplitGroupCentralResponse{
+		ID:          item.ID.String(),
+		Name:        item.Name,
+		Description: item.Description,
+		Status:      item.Status,
+	}
+}
+
+func mapCentralSplitResponse(split models.CentralSplit) CentralSplitResponse {
+	return CentralSplitResponse{
+		ID:           split.ID.String(),
+		CentralID:    split.CentralID.String(),
+		SplitGroupID: split.SplitGroupID.String(),
+		SplitGroup:   mapSplitGroupResponse(split.SplitGroup),
+		PctSplit:     split.PctSplit,
+	}
 }
 
 func mapCentralResponse(item *models.Central) CentralResponse {
@@ -142,15 +308,20 @@ func mapCentralResponse(item *models.Central) CentralResponse {
 		ID:     item.ID.String(),
 		Name:   item.Name,
 		Status: item.Status,
+		Splits: make([]CentralSplitResponse, 0, len(item.Splits)),
 	}
 
 	for _, split := range item.Splits {
-		switch split.SplitGroup {
-		case CentralGroupBachelorNormal:
+		response.Splits = append(response.Splits, mapCentralSplitResponse(split))
+
+		groupName := normalizeCentralGroupName(split.SplitGroup.Name)
+
+		switch groupName {
+		case CentralGroupBachelorNormalName:
 			response.BachelorNormal = split.PctSplit
-		case CentralGroupBachelorSpecial:
+		case CentralGroupBachelorSpecialName:
 			response.BachelorSpecial = split.PctSplit
-		case CentralGroupGraduate:
+		case CentralGroupGraduateName:
 			response.Graduate = split.PctSplit
 		}
 	}
@@ -165,6 +336,7 @@ func (s *CentralService) GetAll() ([]CentralResponse, error) {
 	}
 
 	result := make([]CentralResponse, 0, len(items))
+
 	for i := range items {
 		result = append(result, mapCentralResponse(&items[i]))
 	}
@@ -192,7 +364,7 @@ func (s *CentralService) Create(input CreateCentralInput) (*CentralResponse, err
 		return nil, errors.New("status ต้องเป็น 0 หรือ 1")
 	}
 
-	normalizedSplits, err := normalizeSplits(input.Splits)
+	normalizedSplits, err := s.normalizeSplits(input.Splits)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +373,7 @@ func (s *CentralService) Create(input CreateCentralInput) (*CentralResponse, err
 	if err == nil && existing != nil {
 		return nil, errors.New("ชื่อส่วนกลางนี้มีอยู่แล้ว")
 	}
+
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
@@ -222,6 +395,7 @@ func (s *CentralService) Create(input CreateCentralInput) (*CentralResponse, err
 	}
 
 	resp := mapCentralResponse(created)
+
 	return &resp, nil
 }
 
@@ -253,7 +427,7 @@ func (s *CentralService) Update(id string, input UpdateCentralInput) (*CentralRe
 		return nil, errors.New("status ต้องเป็น 0 หรือ 1")
 	}
 
-	normalizedSplits, err := normalizeSplits(input.Splits)
+	normalizedSplits, err := s.normalizeSplits(input.Splits)
 	if err != nil {
 		return nil, err
 	}
@@ -262,6 +436,7 @@ func (s *CentralService) Update(id string, input UpdateCentralInput) (*CentralRe
 	if err == nil && existing != nil && existing.ID != item.ID {
 		return nil, errors.New("ชื่อส่วนกลางนี้มีอยู่แล้ว")
 	}
+
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
@@ -281,6 +456,7 @@ func (s *CentralService) Update(id string, input UpdateCentralInput) (*CentralRe
 	}
 
 	resp := mapCentralResponse(updated)
+
 	return &resp, nil
 }
 
@@ -311,6 +487,7 @@ func (s *CentralService) UpdateStatus(id string, input UpdateCentralStatusInput)
 	}
 
 	resp := mapCentralResponse(updated)
+
 	return &resp, nil
 }
 

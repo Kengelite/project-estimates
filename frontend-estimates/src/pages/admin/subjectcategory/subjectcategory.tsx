@@ -19,6 +19,23 @@ const emptyForm: SubjectCategoryFormData = {
   name: "",
 };
 
+type SortKey = "name" | "status";
+type SortOrder = "asc" | "desc";
+
+type SortConfig = {
+  key: SortKey;
+  order: SortOrder;
+};
+
+type SubjectCategoryApiItem = {
+  id?: string | number;
+  ID?: string | number;
+  name?: string;
+  Name?: string;
+  status?: string | number | boolean;
+  Status?: string | number | boolean;
+};
+
 function SearchIcon() {
   return (
     <svg
@@ -35,6 +52,39 @@ function SearchIcon() {
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
+  );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  sortKey: SortKey;
+  sortConfig: SortConfig;
+  onSort: (key: SortKey) => void;
+  align?: "left" | "center";
+}) {
+  const isActive = sortConfig.key === sortKey;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`inline-flex items-center gap-1 text-xs font-semibold text-gray-600 transition-colors hover:text-blue-600 ${align === "center" ? "justify-center" : "justify-start"
+        }`}
+    >
+      <span>{label}</span>
+
+      {isActive && (
+        <span className="text-[10px] text-gray-400">
+          {sortConfig.order === "desc" ? "▼" : "▲"}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -89,27 +139,51 @@ function StatusSwitch({
     <button
       type="button"
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-        checked ? "bg-emerald-500" : "bg-gray-300"
-      }`}
+      className={`relative inline-flex h-8 w-[64px] items-center rounded-full px-1 transition-colors ${checked ? "bg-emerald-500" : "bg-gray-300"
+        }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
-      <span className="absolute left-2 text-[10px] font-medium text-white">
-        {checked ? "เปิด" : ""}
+        className={`absolute text-[11px] font-bold text-white transition-all ${checked ? "left-2" : "right-2"
+          }`}
+      >
+        {checked ? "เปิด" : "ปิด"}
       </span>
+
+      <span
+        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[32px]" : "translate-x-0"
+          }`}
+      />
     </button>
   );
 }
 
-type SubjectCategoryApiItem = {
-  id: string;
-  name?: string;
-  status?: string;
-};
+function pickArrayFromResponse<T>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.Data)) return response.Data;
+  if (Array.isArray(response?.items)) return response.items;
+  if (Array.isArray(response?.result)) return response.result;
+  if (Array.isArray(response?.results)) return response.results;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response?.data?.items)) return response.data.items;
+
+  return [];
+}
+
+function getStatusBoolean(status: any) {
+  return String(status ?? "1") === "1" || status === true;
+}
+
+function compareText(a: string, b: string) {
+  return String(a || "").localeCompare(String(b || ""), "th", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function compareBoolean(a: boolean, b: boolean) {
+  return Number(a) - Number(b);
+}
 
 export default function SubjectCategoryManagement() {
   const [items, setItems] = useState<SubjectCategoryItem[]>([]);
@@ -120,22 +194,40 @@ export default function SubjectCategoryManagement() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "name",
+    order: "asc",
+  });
+
   const [showFormModal, setShowFormModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<SubjectCategoryItem | null>(null);
-  const [deletingItem, setDeletingItem] = useState<SubjectCategoryItem | null>(null);
-  const [formData, setFormData] = useState<SubjectCategoryFormData>(emptyForm);
+  const [editingItem, setEditingItem] =
+    useState<SubjectCategoryItem | null>(null);
+  const [deletingItem, setDeletingItem] =
+    useState<SubjectCategoryItem | null>(null);
+  const [formData, setFormData] =
+    useState<SubjectCategoryFormData>(emptyForm);
+
+  const mapSubjectCategoryToItem = (
+    item: SubjectCategoryApiItem,
+  ): SubjectCategoryItem => {
+    return {
+      id: String(item.id ?? item.ID ?? ""),
+      name: item.name || item.Name || "",
+      isActive: getStatusBoolean(item.status ?? item.Status),
+    };
+  };
 
   const fetchSubjectCategories = async () => {
     try {
       setLoading(true);
-      const list = await GetDataSubjectCategory();
+
+      const response = await GetDataSubjectCategory();
+      const list = pickArrayFromResponse<SubjectCategoryApiItem>(response);
 
       setItems(
-        (list || []).map((item: SubjectCategoryApiItem) => ({
-          id: item.id,
-          name: item.name || "",
-          isActive: item.status === "1",
-        })),
+        list
+          .map((item) => mapSubjectCategoryToItem(item))
+          .filter((item) => Boolean(item.id) && Boolean(item.name)),
       );
     } catch (error: any) {
       await Swal.fire({
@@ -153,21 +245,69 @@ export default function SubjectCategoryManagement() {
     fetchSubjectCategories();
   }, []);
 
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) {
+        return {
+          key,
+          order: "asc",
+        };
+      }
+
+      return {
+        key,
+        order: prev.order === "asc" ? "desc" : "asc",
+      };
+    });
+
+    setPage(1);
+  };
+
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
+
     if (!keyword) return items;
 
-    return items.filter((item) => item.name.toLowerCase().includes(keyword));
+    return items.filter((item) => {
+      const statusText = item.isActive ? "เปิด" : "ปิด";
+
+      return (
+        item.name.toLowerCase().includes(keyword) ||
+        statusText.toLowerCase().includes(keyword)
+      );
+    });
   }, [items, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const sortedItems = useMemo(() => {
+    const rows = [...filteredItems];
 
-  const paginatedItems = filteredItems.slice(
+    rows.sort((a, b) => {
+      let result = 0;
+
+      if (sortConfig.key === "name") {
+        result = compareText(a.name, b.name);
+      }
+
+      if (sortConfig.key === "status") {
+        result = compareBoolean(a.isActive, b.isActive);
+      }
+
+      return sortConfig.order === "asc" ? result : -result;
+    });
+
+    return rows;
+  }, [filteredItems, sortConfig]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
+
+  const paginatedItems = sortedItems.slice(
     (page - 1) * pageSize,
     page * pageSize,
   );
 
-  const resetForm = () => setFormData(emptyForm);
+  const resetForm = () => {
+    setFormData(emptyForm);
+  };
 
   const handleFormChange = (
     field: keyof SubjectCategoryFormData,
@@ -181,7 +321,10 @@ export default function SubjectCategoryManagement() {
       return;
     }
 
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const validateForm = () => {
@@ -228,8 +371,8 @@ export default function SubjectCategoryManagement() {
       icon: "question",
       title: editingItem ? "ยืนยันการแก้ไขข้อมูล" : "ยืนยันการบันทึกข้อมูล",
       text: editingItem
-        ? `ต้องการแก้ไขหมวดวิชา ${value} ใช่หรือไม่`
-        : `ต้องการบันทึกหมวดวิชา ${value} ใช่หรือไม่`,
+        ? `ต้องการแก้ไขหมวดวิชา "${value}" ใช่หรือไม่`
+        : `ต้องการบันทึกหมวดวิชา "${value}" ใช่หรือไม่`,
       showCancelButton: true,
       confirmButtonText: "บันทึก",
       cancelButtonText: "ยกเลิก",
@@ -258,7 +401,6 @@ export default function SubjectCategoryManagement() {
       setShowFormModal(false);
       setEditingItem(null);
       resetForm();
-      await fetchSubjectCategories();
 
       await Swal.fire({
         icon: "success",
@@ -268,6 +410,8 @@ export default function SubjectCategoryManagement() {
           : `เพิ่มหมวดวิชา "${value}" เรียบร้อยแล้ว`,
         confirmButtonColor: "#22c55e",
       });
+
+      await fetchSubjectCategories();
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -299,9 +443,10 @@ export default function SubjectCategoryManagement() {
 
     try {
       setSubmitting(true);
+
       await DeleteDataSubjectCategory(deletingItem.id);
+
       setDeletingItem(null);
-      await fetchSubjectCategories();
 
       await Swal.fire({
         icon: "success",
@@ -309,6 +454,8 @@ export default function SubjectCategoryManagement() {
         text: "ลบข้อมูลหมวดวิชาเรียบร้อยแล้ว",
         confirmButtonColor: "#22c55e",
       });
+
+      await fetchSubjectCategories();
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -341,7 +488,17 @@ export default function SubjectCategoryManagement() {
 
     try {
       await EditStatusSubjectCategory(item.id, nextStatus);
-      await fetchSubjectCategories();
+
+      setItems((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? {
+              ...row,
+              isActive: nextStatus === "1",
+            }
+            : row,
+        ),
+      );
 
       await Swal.fire({
         icon: "success",
@@ -360,10 +517,11 @@ export default function SubjectCategoryManagement() {
   };
 
   const handleFormKeyDown = async (
-    e: React.KeyboardEvent<HTMLDivElement>,
+    event: React.KeyboardEvent<HTMLDivElement>,
   ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+    if (event.key === "Enter") {
+      event.preventDefault();
+
       if (!submitting) {
         await handleSubmit();
       }
@@ -380,7 +538,9 @@ export default function SubjectCategoryManagement() {
         </nav>
 
         <div className="mb-5 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">จัดการหมวดวิชา</h1>
+          <h1 className="text-xl font-bold text-gray-900">
+            จัดการหมวดวิชา
+          </h1>
 
           <button
             type="button"
@@ -410,10 +570,11 @@ export default function SubjectCategoryManagement() {
               <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
                 <SearchIcon />
               </div>
+
               <input
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
+                onChange={(event) => {
+                  setSearch(event.target.value);
                   setPage(1);
                 }}
                 placeholder="ค้นหาหมวดวิชา..."
@@ -436,12 +597,26 @@ export default function SubjectCategoryManagement() {
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     ลำดับ
                   </th>
+
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600">
-                    ชื่อหมวดวิชา
+                    <SortableHeader
+                      label="ชื่อหมวดวิชา"
+                      sortKey="name"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                    />
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
-                    สถานะ
+                    <SortableHeader
+                      label="สถานะ"
+                      sortKey="status"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      align="center"
+                    />
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">
                     จัดการ
                   </th>
@@ -496,6 +671,7 @@ export default function SubjectCategoryManagement() {
                             type="button"
                             onClick={() => handleOpenEdit(item)}
                             disabled={submitting}
+                            title="แก้ไข"
                           >
                             <EditIcon />
                           </button>
@@ -504,6 +680,7 @@ export default function SubjectCategoryManagement() {
                             type="button"
                             onClick={() => setDeletingItem(item)}
                             disabled={submitting}
+                            title="ลบ"
                           >
                             <DeleteIcon />
                           </button>
@@ -520,7 +697,7 @@ export default function SubjectCategoryManagement() {
             page={page}
             totalPages={totalPages}
             pageSize={pageSize}
-            totalItems={filteredItems.length}
+            totalItems={sortedItems.length}
             setPage={setPage}
             setPageSize={setPageSize}
           />

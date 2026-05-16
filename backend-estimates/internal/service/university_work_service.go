@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -19,25 +20,26 @@ func NewUniversityWorkService(repo *repository.UniversityWorkRepository) *Univer
 }
 
 const (
-	UniversityWorkGroupBachelorNormal  = "bachelor_normal"
-	UniversityWorkGroupBachelorSpecial = "bachelor_special"
-	UniversityWorkGroupGraduate        = "graduate"
+	UniversityWorkGroupBachelorNormalName  = "ป.ตรี (ปกติ)"
+	UniversityWorkGroupBachelorSpecialName = "ป.ตรี (พิเศษ)"
+	UniversityWorkGroupGraduateName        = "บัณฑิต"
 )
 
 type UniversityWorkSplitInput struct {
-	SplitGroup string  `json:"splitGroup"`
-	PctSplit   float64 `json:"pctSplit"`
+	SplitGroupID string  `json:"splitGroupId"`
+	SplitGroup   string  `json:"splitGroup"`
+	PctSplit     float64 `json:"pctSplit"`
 }
 
 type CreateUniversityWorkInput struct {
-	Name   string                   `json:"name"`
-	Status string                   `json:"status"`
+	Name   string                     `json:"name"`
+	Status string                     `json:"status"`
 	Splits []UniversityWorkSplitInput `json:"splits"`
 }
 
 type UpdateUniversityWorkInput struct {
-	Name   string                   `json:"name"`
-	Status string                   `json:"status"`
+	Name   string                     `json:"name"`
+	Status string                     `json:"status"`
 	Splits []UniversityWorkSplitInput `json:"splits"`
 }
 
@@ -45,16 +47,38 @@ type UpdateUniversityWorkStatusInput struct {
 	Status string `json:"status"`
 }
 
-type UniversityWorkResponse struct {
-	ID              string  `json:"id"`
-	Name            string  `json:"name"`
-	Status          string  `json:"status"`
-	BachelorNormal  float64 `json:"bachelorNormal"`
-	BachelorSpecial float64 `json:"bachelorSpecial"`
-	Graduate        float64 `json:"graduate"`
+type UniversityWorkSplitGroupResponse struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      int    `json:"status"`
 }
 
-func roundUW2(v float64) float64 {
+type UniversityWorkSplitResponse struct {
+	ID               string                           `json:"id"`
+	UniversityWorkID string                           `json:"universityWorkId"`
+	SplitGroupID     string                           `json:"splitGroupId"`
+	SplitGroup       UniversityWorkSplitGroupResponse `json:"splitGroup"`
+	PctSplit         float64                          `json:"pctSplit"`
+}
+
+type UniversityWorkResponse struct {
+	ID              string                        `json:"id"`
+	Name            string                        `json:"name"`
+	Status          string                        `json:"status"`
+	BachelorNormal  float64                       `json:"bachelorNormal"`
+	BachelorSpecial float64                       `json:"bachelorSpecial"`
+	Graduate        float64                       `json:"graduate"`
+	Splits          []UniversityWorkSplitResponse `json:"splits"`
+}
+
+type resolvedUniversityWorkSplitInput struct {
+	SplitGroupID uuid.UUID
+	SplitGroup   models.SplitGroup
+	PctSplit     float64
+}
+
+func roundUniversityWork2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
@@ -66,39 +90,139 @@ func normalizeUniversityWorkStatus(value string) string {
 	return strings.TrimSpace(value)
 }
 
-func validUniversityWorkGroup(group string) bool {
-	switch group {
-	case UniversityWorkGroupBachelorNormal, UniversityWorkGroupBachelorSpecial, UniversityWorkGroupGraduate:
+func normalizeUniversityWorkGroupName(value string) string {
+	value = strings.TrimSpace(value)
+
+	switch value {
+	case "bachelor_normal", "bachelor normal", "normal", "ปกติ", "ตรีปกติ", "ป.ตรีปกติ", "ป.ตรี (ปกติ)":
+		return UniversityWorkGroupBachelorNormalName
+
+	case "bachelor_special", "bachelor special", "special", "พิเศษ", "ตรีพิเศษ", "ป.ตรีพิเศษ", "ป.ตรี (พิเศษ)":
+		return UniversityWorkGroupBachelorSpecialName
+
+	case "graduate", "grad", "บัณฑิต", "บัณฑิตศึกษา", "ป.โท", "ป.เอก":
+		return UniversityWorkGroupGraduateName
+
+	default:
+		return value
+	}
+}
+
+func validUniversityWorkGroupName(name string) bool {
+	switch name {
+	case UniversityWorkGroupBachelorNormalName, UniversityWorkGroupBachelorSpecialName, UniversityWorkGroupGraduateName:
 		return true
 	default:
 		return false
 	}
 }
 
-func normalizeUniversityWorkSplits(inputs []UniversityWorkSplitInput) ([]UniversityWorkSplitInput, error) {
+func (s *UniversityWorkService) findSplitGroupByID(id uuid.UUID) (*models.SplitGroup, error) {
+	var item models.SplitGroup
+
+	err := s.Repo.DB.
+		Where("id = ?", id).
+		Where("deleted_at IS NULL").
+		Where("status = ?", 1).
+		First(&item).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &item, nil
+}
+
+func (s *UniversityWorkService) findSplitGroupByName(name string) (*models.SplitGroup, error) {
+	var item models.SplitGroup
+
+	err := s.Repo.DB.
+		Where("name = ?", name).
+		Where("deleted_at IS NULL").
+		Where("status = ?", 1).
+		First(&item).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &item, nil
+}
+
+func (s *UniversityWorkService) resolveSplitGroup(input UniversityWorkSplitInput) (*models.SplitGroup, error) {
+	splitGroupID := strings.TrimSpace(input.SplitGroupID)
+	splitGroupName := normalizeUniversityWorkGroupName(input.SplitGroup)
+
+	if splitGroupID != "" {
+		id, err := uuid.Parse(splitGroupID)
+		if err != nil {
+			return nil, errors.New("รหัสกลุ่มสัดส่วนไม่ถูกต้อง")
+		}
+
+		splitGroup, err := s.findSplitGroupByID(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("ไม่พบกลุ่มสัดส่วน")
+			}
+			return nil, err
+		}
+
+		splitGroup.Name = normalizeUniversityWorkGroupName(splitGroup.Name)
+
+		if !validUniversityWorkGroupName(splitGroup.Name) {
+			return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
+		}
+
+		return splitGroup, nil
+	}
+
+	if splitGroupName == "" {
+		return nil, errors.New("กรุณาระบุกลุ่มสัดส่วน")
+	}
+
+	if id, err := uuid.Parse(splitGroupName); err == nil {
+		splitGroup, err := s.findSplitGroupByID(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("ไม่พบกลุ่มสัดส่วน")
+			}
+			return nil, err
+		}
+
+		splitGroup.Name = normalizeUniversityWorkGroupName(splitGroup.Name)
+
+		if !validUniversityWorkGroupName(splitGroup.Name) {
+			return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
+		}
+
+		return splitGroup, nil
+	}
+
+	if !validUniversityWorkGroupName(splitGroupName) {
+		return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
+	}
+
+	splitGroup, err := s.findSplitGroupByName(splitGroupName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("ไม่พบกลุ่มสัดส่วน")
+		}
+		return nil, err
+	}
+
+	return splitGroup, nil
+}
+
+func (s *UniversityWorkService) normalizeUniversityWorkSplits(inputs []UniversityWorkSplitInput) ([]resolvedUniversityWorkSplitInput, error) {
 	if len(inputs) == 0 {
 		return nil, errors.New("กรุณาระบุข้อมูลเปอร์เซ็นต์อย่างน้อย 1 รายการ")
 	}
 
 	seen := map[string]bool{}
-	result := make([]UniversityWorkSplitInput, 0, len(inputs))
+	result := make([]resolvedUniversityWorkSplitInput, 0, len(inputs))
 
 	for _, input := range inputs {
-		input.SplitGroup = strings.TrimSpace(input.SplitGroup)
-		input.PctSplit = roundUW2(input.PctSplit)
-
-		if input.SplitGroup == "" {
-			return nil, errors.New("กรุณาระบุกลุ่มสัดส่วน")
-		}
-
-		if !validUniversityWorkGroup(input.SplitGroup) {
-			return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
-		}
-
-		if seen[input.SplitGroup] {
-			return nil, errors.New("พบกลุ่มสัดส่วนซ้ำ")
-		}
-		seen[input.SplitGroup] = true
+		input.PctSplit = roundUniversityWork2(input.PctSplit)
 
 		if input.PctSplit < 0 {
 			return nil, errors.New("เปอร์เซ็นต์หักแบ่งต้องไม่น้อยกว่า 0")
@@ -108,33 +232,75 @@ func normalizeUniversityWorkSplits(inputs []UniversityWorkSplitInput) ([]Univers
 			return nil, errors.New("เปอร์เซ็นต์หักแบ่งต้องไม่เกิน 100")
 		}
 
-		result = append(result, input)
+		splitGroup, err := s.resolveSplitGroup(input)
+		if err != nil {
+			return nil, err
+		}
+
+		groupName := normalizeUniversityWorkGroupName(splitGroup.Name)
+
+		if !validUniversityWorkGroupName(groupName) {
+			return nil, errors.New("พบกลุ่มสัดส่วนไม่ถูกต้อง")
+		}
+
+		if seen[groupName] {
+			return nil, errors.New("พบกลุ่มสัดส่วนซ้ำ")
+		}
+
+		seen[groupName] = true
+
+		result = append(result, resolvedUniversityWorkSplitInput{
+			SplitGroupID: splitGroup.ID,
+			SplitGroup:   *splitGroup,
+			PctSplit:     input.PctSplit,
+		})
 	}
 
 	requiredGroups := []string{
-		UniversityWorkGroupBachelorNormal,
-		UniversityWorkGroupBachelorSpecial,
-		UniversityWorkGroupGraduate,
+		UniversityWorkGroupBachelorNormalName,
+		UniversityWorkGroupBachelorSpecialName,
+		UniversityWorkGroupGraduateName,
 	}
 
 	for _, group := range requiredGroups {
 		if !seen[group] {
-			return nil, errors.New("ข้อมูลสัดส่วนไม่ครบ กรุณาระบุ ตรี(ปกติ) ตรี(พิเศษ) และบัณฑิต")
+			return nil, errors.New("ข้อมูลสัดส่วนไม่ครบ กรุณาระบุ ป.ตรี (ปกติ), ป.ตรี (พิเศษ) และบัณฑิต")
 		}
 	}
 
 	return result, nil
 }
 
-func buildUniversityWorkSplitModels(inputs []UniversityWorkSplitInput) []models.UniversityWorkSplit {
+func buildUniversityWorkSplitModels(inputs []resolvedUniversityWorkSplitInput) []models.UniversityWorkSplit {
 	result := make([]models.UniversityWorkSplit, 0, len(inputs))
+
 	for _, input := range inputs {
 		result = append(result, models.UniversityWorkSplit{
-			SplitGroup: input.SplitGroup,
-			PctSplit:   input.PctSplit,
+			SplitGroupID: input.SplitGroupID,
+			PctSplit:     input.PctSplit,
 		})
 	}
+
 	return result
+}
+
+func mapUniversityWorkSplitGroupResponse(item models.SplitGroup) UniversityWorkSplitGroupResponse {
+	return UniversityWorkSplitGroupResponse{
+		ID:          item.ID.String(),
+		Name:        item.Name,
+		Description: item.Description,
+		Status:      item.Status,
+	}
+}
+
+func mapUniversityWorkSplitResponse(split models.UniversityWorkSplit) UniversityWorkSplitResponse {
+	return UniversityWorkSplitResponse{
+		ID:               split.ID.String(),
+		UniversityWorkID: split.UniversityWorkID.String(),
+		SplitGroupID:     split.SplitGroupID.String(),
+		SplitGroup:       mapUniversityWorkSplitGroupResponse(split.SplitGroup),
+		PctSplit:         split.PctSplit,
+	}
 }
 
 func mapUniversityWorkResponse(item *models.UniversityWork) UniversityWorkResponse {
@@ -142,15 +308,20 @@ func mapUniversityWorkResponse(item *models.UniversityWork) UniversityWorkRespon
 		ID:     item.ID.String(),
 		Name:   item.Name,
 		Status: item.Status,
+		Splits: make([]UniversityWorkSplitResponse, 0, len(item.Splits)),
 	}
 
 	for _, split := range item.Splits {
-		switch split.SplitGroup {
-		case UniversityWorkGroupBachelorNormal:
+		response.Splits = append(response.Splits, mapUniversityWorkSplitResponse(split))
+
+		groupName := normalizeUniversityWorkGroupName(split.SplitGroup.Name)
+
+		switch groupName {
+		case UniversityWorkGroupBachelorNormalName:
 			response.BachelorNormal = split.PctSplit
-		case UniversityWorkGroupBachelorSpecial:
+		case UniversityWorkGroupBachelorSpecialName:
 			response.BachelorSpecial = split.PctSplit
-		case UniversityWorkGroupGraduate:
+		case UniversityWorkGroupGraduateName:
 			response.Graduate = split.PctSplit
 		}
 	}
@@ -165,6 +336,7 @@ func (s *UniversityWorkService) GetAll() ([]UniversityWorkResponse, error) {
 	}
 
 	result := make([]UniversityWorkResponse, 0, len(items))
+
 	for i := range items {
 		result = append(result, mapUniversityWorkResponse(&items[i]))
 	}
@@ -192,7 +364,7 @@ func (s *UniversityWorkService) Create(input CreateUniversityWorkInput) (*Univer
 		return nil, errors.New("status ต้องเป็น 0 หรือ 1")
 	}
 
-	normalizedSplits, err := normalizeUniversityWorkSplits(input.Splits)
+	normalizedSplits, err := s.normalizeUniversityWorkSplits(input.Splits)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +373,7 @@ func (s *UniversityWorkService) Create(input CreateUniversityWorkInput) (*Univer
 	if err == nil && existing != nil {
 		return nil, errors.New("ชื่องานมหาวิทยาลัยนี้มีอยู่แล้ว")
 	}
+
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
@@ -222,6 +395,7 @@ func (s *UniversityWorkService) Create(input CreateUniversityWorkInput) (*Univer
 	}
 
 	resp := mapUniversityWorkResponse(created)
+
 	return &resp, nil
 }
 
@@ -253,7 +427,7 @@ func (s *UniversityWorkService) Update(id string, input UpdateUniversityWorkInpu
 		return nil, errors.New("status ต้องเป็น 0 หรือ 1")
 	}
 
-	normalizedSplits, err := normalizeUniversityWorkSplits(input.Splits)
+	normalizedSplits, err := s.normalizeUniversityWorkSplits(input.Splits)
 	if err != nil {
 		return nil, err
 	}
@@ -262,6 +436,7 @@ func (s *UniversityWorkService) Update(id string, input UpdateUniversityWorkInpu
 	if err == nil && existing != nil && existing.ID != item.ID {
 		return nil, errors.New("ชื่องานมหาวิทยาลัยนี้มีอยู่แล้ว")
 	}
+
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
@@ -281,6 +456,7 @@ func (s *UniversityWorkService) Update(id string, input UpdateUniversityWorkInpu
 	}
 
 	resp := mapUniversityWorkResponse(updated)
+
 	return &resp, nil
 }
 
@@ -311,6 +487,7 @@ func (s *UniversityWorkService) UpdateStatus(id string, input UpdateUniversityWo
 	}
 
 	resp := mapUniversityWorkResponse(updated)
+
 	return &resp, nil
 }
 

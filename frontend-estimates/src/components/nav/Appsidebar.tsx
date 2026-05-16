@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useNavigate } from "react-router";
+import Swal from "sweetalert2";
 
 import { ChevronDown, ChevronUp, Ellipsis } from "lucide-react";
 import {
@@ -89,6 +90,16 @@ const navItems: NavItem[] = [
         icon: <AcademicCapIcon className="w-4 h-4" />,
         name: "จัดการรายวิชานอกคณะที่ถูกหัก",
         path: "/manage/subjectoutsides",
+      },
+      {
+        icon: <AcademicCapIcon className="w-4 h-4" />,
+        name: "จัดการกลุ่มสัดส่วน",
+        path: "/manage/splitgroups",
+      },
+      {
+        icon: <AcademicCapIcon className="w-4 h-4" />,
+        name: "จัดการผู้ใช้งาน",
+        path: "/manage/users",
       },
     ],
   },
@@ -352,9 +363,58 @@ const AppSidebar: React.FC = () => {
     [shouldShowContent, isSubmenuOpen, subMenuHeight, isActive, renderBadges],
   );
 
+  const clearAuthStorage = useCallback(() => {
+    const keys = [
+      "token",
+      "accessToken",
+      "authToken",
+      "jwt",
+      "jwtToken",
+      "access_token",
+      "user",
+      "authUser",
+      "currentUser",
+      "userData",
+      "profile",
+      "loginUser",
+      "admin",
+      "account",
+      "role",
+      "userRole",
+    ];
+
+    keys.forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+  }, []);
+
   const handleLogout = useCallback(async () => {
-    navigate("/login");
-  }, [navigate]);
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "ยืนยันการออกจากระบบ",
+      text: "คุณต้องการออกจากระบบใช่หรือไม่?",
+      showCancelButton: true,
+      confirmButtonText: "ออกจากระบบ",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#9ca3af",
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
+
+    clearAuthStorage();
+
+    await Swal.fire({
+      icon: "success",
+      title: "ออกจากระบบสำเร็จ",
+      timer: 900,
+      showConfirmButton: false,
+    });
+
+    navigate("/login", { replace: true });
+  }, [clearAuthStorage, navigate]);
 
   const renderMenuItems = useCallback(
     (items: NavItem[], menuType: MenuType) => {
