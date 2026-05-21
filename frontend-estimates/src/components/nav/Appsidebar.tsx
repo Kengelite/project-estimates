@@ -16,6 +16,15 @@ import {
   DocumentTextIcon,
   ArrowDownOnSquareIcon,
   ArrowRightStartOnRectangleIcon,
+  CircleStackIcon,
+  CalendarDaysIcon,
+  BuildingOffice2Icon,
+  CalendarIcon,
+  UserGroupIcon,
+  TagIcon,
+  ChartPieIcon,
+  UsersIcon,
+  RectangleStackIcon,
 } from "@heroicons/react/24/outline";
 
 import { useSidebar } from "../context/useSidebar";
@@ -52,52 +61,52 @@ const navItems: NavItem[] = [
     roles: ["admin", "superadmin", "superstaff"],
   },
   {
-    icon: <AcademicCapIcon className="w-5 h-5" />,
+    icon: <CircleStackIcon className="w-5 h-5" />,
     name: "จัดการข้อมูลทั้งหมด",
     roles: ["admin", "superadmin", "superstaff"],
     subItems: [
       {
-        icon: <AcademicCapIcon className="w-4 h-4" />,
+        icon: <CalendarDaysIcon className="w-4 h-4" />,
         name: "จัดการปีการศึกษา",
         path: "/manage/years",
       },
       {
-        icon: <AcademicCapIcon className="w-4 h-4" />,
+        icon: <RectangleStackIcon className="w-4 h-4" />,
         name: "จัดการระดับปริญญา",
         path: "/manage/degreelevels",
       },
       {
-        icon: <AcademicCapIcon className="w-4 h-4" />,
+        icon: <BuildingOffice2Icon className="w-4 h-4" />,
         name: "จัดการโครงการระดับปริญญา",
         path: "/manage/sections",
       },
       {
-        icon: <AcademicCapIcon className="w-4 h-4" />,
+        icon: <CalendarIcon className="w-4 h-4" />,
         name: "จัดการภาคการศึกษา",
         path: "/manage/semesters",
       },
       {
-        icon: <AcademicCapIcon className="w-4 h-4" />,
+        icon: <UserGroupIcon className="w-4 h-4" />,
         name: "จัดการชั้นปี",
         path: "/manage/studentyears",
       },
       {
-        icon: <AcademicCapIcon className="w-4 h-4" />,
+        icon: <TagIcon className="w-4 h-4" />,
         name: "จัดการหมวดวิชา",
         path: "/manage/subjectcategories",
       },
       {
-        icon: <AcademicCapIcon className="w-4 h-4" />,
+        icon: <BookOpenIcon className="w-4 h-4" />,
         name: "จัดการรายวิชานอกคณะที่ถูกหัก",
         path: "/manage/subjectoutsides",
       },
       {
-        icon: <AcademicCapIcon className="w-4 h-4" />,
+        icon: <ChartPieIcon className="w-4 h-4" />,
         name: "จัดการกลุ่มสัดส่วน",
         path: "/manage/splitgroups",
       },
       {
-        icon: <AcademicCapIcon className="w-4 h-4" />,
+        icon: <UsersIcon className="w-4 h-4" />,
         name: "จัดการผู้ใช้งาน",
         path: "/manage/users",
       },
@@ -413,7 +422,7 @@ const AppSidebar: React.FC = () => {
       showConfirmButton: false,
     });
 
-    navigate("/login", { replace: true });
+    navigate("/", { replace: true });
   }, [clearAuthStorage, navigate]);
 
   const renderMenuItems = useCallback(
@@ -430,8 +439,7 @@ const AppSidebar: React.FC = () => {
           isItemActive ? "menu-item-icon-active" : "menu-item-icon-inactive"
         }`;
 
-        const normalMenuClass =
-          "hover:bg-gray-50 text-gray-600 rounded-l-lg";
+        const normalMenuClass = "hover:bg-gray-50 text-gray-600 rounded-l-lg";
         const activeMenuClass =
           "bg-blue-50 text-blue-700 border-r-4 border-blue-500 rounded-l-lg";
 
