@@ -85,6 +85,26 @@ type AnnualBudgetSummarySemesterResponse struct {
 	Semester string `json:"semester"`
 }
 
+type AnnualBudgetSummaryCourseStudentResponse struct {
+	ID            string `json:"id"`
+	CourseID      string `json:"courseId"`
+	YearID        int    `json:"yearId"`
+	StudentAmount int    `json:"studentAmount"`
+}
+
+type AnnualBudgetSummaryCourseMasterResponse struct {
+	ID            string                                      `json:"id"`
+	DegreeLevelID string                                      `json:"degreeLevelId,omitempty"`
+	NameTH        string                                      `json:"nameTH"`
+	NameEN        string                                      `json:"nameEN"`
+	ShortName     string                                      `json:"shortName"`
+	StudyDuration int                                         `json:"studyDuration"`
+	TuitionFees   float64                                     `json:"tuitionFees"`
+	DeductToUni   float64                                     `json:"deductToUni"`
+	Status        string                                      `json:"status"`
+	Students      []AnnualBudgetSummaryCourseStudentResponse `json:"students"`
+}
+
 type AnnualBudgetSummaryResponse struct {
 	ID                        string                              `json:"id"`
 	YearID                    string                              `json:"yearId"`
@@ -101,26 +121,42 @@ type AnnualBudgetSummaryResponse struct {
 }
 
 type AnnualBudgetSummaryCourseResponse struct {
-	ID                      string                              `json:"id"`
-	SummaryID               string                              `json:"summaryId"`
-	CourseID                *string                             `json:"courseId,omitempty"`
-	CourseNameSnapshot      string                              `json:"courseNameSnapshot"`
-	CourseShortNameSnapshot string                              `json:"courseShortNameSnapshot"`
-	SectionTitleSnapshot    string                              `json:"sectionTitleSnapshot"`
-	InitialAmount           float64                             `json:"initialAmount"`
-	Step2DeductAmount       float64                             `json:"step2DeductAmount"`
-	Step2RemainingAmount    float64                             `json:"step2RemainingAmount"`
-	Step3DeductAmount       float64                             `json:"step3DeductAmount"`
-	Step3RemainingAmount    float64                             `json:"step3RemainingAmount"`
-	Step4DeductAmount       float64                             `json:"step4DeductAmount"`
-	Step4RemainingAmount    float64                             `json:"step4RemainingAmount"`
-	Step5DeductAmount       float64                             `json:"step5DeductAmount"`
-	Step5RemainingAmount    float64                             `json:"step5RemainingAmount"`
-	Step6DeductAmount       float64                             `json:"step6DeductAmount"`
-	FinalRemainingAmount    float64                             `json:"finalRemainingAmount"`
-	Details                 []AnnualBudgetSummaryDetailResponse `json:"details"`
-	CreatedAt               string                              `json:"created_at"`
-	UpdatedAt               string                              `json:"updated_at"`
+	ID        string  `json:"id"`
+	SummaryID string  `json:"summaryId"`
+	CourseID  *string `json:"courseId,omitempty"`
+
+	Course *AnnualBudgetSummaryCourseMasterResponse `json:"course,omitempty"`
+
+	CourseNameSnapshot      string `json:"courseNameSnapshot"`
+	CourseShortNameSnapshot string `json:"courseShortNameSnapshot"`
+	SectionTitleSnapshot    string `json:"sectionTitleSnapshot"`
+
+	TuitionFees   float64 `json:"tuitionFees"`
+	StudentAmount int     `json:"studentAmount"`
+	GrossAmount   float64 `json:"grossAmount"`
+	RiskAmount    float64 `json:"riskAmount"`
+	RiskPercent   float64 `json:"riskPercent"`
+
+	InitialAmount float64 `json:"initialAmount"`
+
+	Step2DeductAmount    float64 `json:"step2DeductAmount"`
+	Step2RemainingAmount float64 `json:"step2RemainingAmount"`
+
+	Step3DeductAmount    float64 `json:"step3DeductAmount"`
+	Step3RemainingAmount float64 `json:"step3RemainingAmount"`
+
+	Step4DeductAmount    float64 `json:"step4DeductAmount"`
+	Step4RemainingAmount float64 `json:"step4RemainingAmount"`
+
+	Step5DeductAmount    float64 `json:"step5DeductAmount"`
+	Step5RemainingAmount float64 `json:"step5RemainingAmount"`
+
+	Step6DeductAmount    float64 `json:"step6DeductAmount"`
+	FinalRemainingAmount float64 `json:"finalRemainingAmount"`
+
+	Details   []AnnualBudgetSummaryDetailResponse `json:"details"`
+	CreatedAt string                              `json:"created_at"`
+	UpdatedAt string                              `json:"updated_at"`
 }
 
 type AnnualBudgetSummaryDetailResponse struct {
@@ -233,6 +269,83 @@ func validateRefType(value string) error {
 	}
 }
 
+func getStudentAmountByYear(course *models.Course, yearID uint) int {
+	if course == nil {
+		return 0
+	}
+
+	if len(course.Students) == 0 {
+		return 0
+	}
+
+	total := 0
+
+	for _, student := range course.Students {
+		if uint(student.YearID) == yearID {
+			total += student.StudentAmount
+		}
+	}
+
+	if total > 0 {
+		return total
+	}
+
+	for _, student := range course.Students {
+		total += student.StudentAmount
+	}
+
+	return total
+}
+
+func buildCourseMasterResponse(course *models.Course) *AnnualBudgetSummaryCourseMasterResponse {
+	if course == nil {
+		return nil
+	}
+
+	if course.ID == uuid.Nil {
+		return nil
+	}
+
+	students := make([]AnnualBudgetSummaryCourseStudentResponse, 0, len(course.Students))
+
+	for _, student := range course.Students {
+		students = append(students, AnnualBudgetSummaryCourseStudentResponse{
+			ID:            student.ID.String(),
+			CourseID:      student.CourseID.String(),
+			YearID:        student.YearID,
+			StudentAmount: student.StudentAmount,
+		})
+	}
+
+	return &AnnualBudgetSummaryCourseMasterResponse{
+		ID:            course.ID.String(),
+		DegreeLevelID: course.DegreeLevelID.String(),
+		NameTH:        course.NameTH,
+		NameEN:        course.NameEN,
+		ShortName:     course.ShortName,
+		StudyDuration: course.StudyDuration,
+		TuitionFees:   roundBudget2(course.TuitionFees),
+		DeductToUni:   roundBudget2(course.DeductToUni),
+		Status:        course.Status,
+		Students:      students,
+	}
+}
+
+func calculateRisk(grossAmount float64, initialAmount float64) (float64, float64) {
+	if grossAmount <= 0 {
+		return 0, 0
+	}
+
+	riskAmount := grossAmount - initialAmount
+	if riskAmount < 0 {
+		riskAmount = 0
+	}
+
+	riskPercent := (riskAmount / grossAmount) * 100
+
+	return roundBudget2(riskAmount), roundBudget2(riskPercent)
+}
+
 func mapSummaryResponse(item *models.AnnualBudgetSummary) AnnualBudgetSummaryResponse {
 	var semesterID *string
 	if item.SemesterID != nil {
@@ -263,8 +376,8 @@ func mapSummaryResponse(item *models.AnnualBudgetSummary) AnnualBudgetSummaryRes
 		SummaryType:               item.SummaryType,
 		SemesterID:                semesterID,
 		Semester:                  semesterResponse,
-		TotalUniversityWorkAmount: item.TotalUniversityWorkAmount,
-		TotalCurriculumAmount:     item.TotalCurriculumAmount,
+		TotalUniversityWorkAmount: roundBudget2(item.TotalUniversityWorkAmount),
+		TotalCurriculumAmount:     roundBudget2(item.TotalCurriculumAmount),
 		Status:                    item.Status,
 		Courses:                   make([]AnnualBudgetSummaryCourseResponse, 0, len(item.Courses)),
 		CreatedAt:                 formatTime(item.CreatedAt),
@@ -278,27 +391,58 @@ func mapSummaryResponse(item *models.AnnualBudgetSummary) AnnualBudgetSummaryRes
 			courseID = &value
 		}
 
+		tuitionFees := 0.0
+		studentAmount := 0
+
+		if course.Course != nil {
+			tuitionFees = roundBudget2(course.Course.TuitionFees)
+			studentAmount = getStudentAmountByYear(course.Course, item.YearID)
+		}
+
+		grossAmount := roundBudget2(tuitionFees * float64(studentAmount))
+
+		if grossAmount == 0 && course.InitialAmount > 0 {
+			grossAmount = roundBudget2(course.InitialAmount)
+		}
+
+		riskAmount, riskPercent := calculateRisk(grossAmount, course.InitialAmount)
+
 		courseResponse := AnnualBudgetSummaryCourseResponse{
-			ID:                      course.ID.String(),
-			SummaryID:               course.SummaryID.String(),
-			CourseID:                courseID,
+			ID:        course.ID.String(),
+			SummaryID: course.SummaryID.String(),
+			CourseID:  courseID,
+			Course:    buildCourseMasterResponse(course.Course),
+
 			CourseNameSnapshot:      course.CourseNameSnapshot,
 			CourseShortNameSnapshot: course.CourseShortNameSnapshot,
 			SectionTitleSnapshot:    course.SectionTitleSnapshot,
-			InitialAmount:           course.InitialAmount,
-			Step2DeductAmount:       course.Step2DeductAmount,
-			Step2RemainingAmount:    course.Step2RemainingAmount,
-			Step3DeductAmount:       course.Step3DeductAmount,
-			Step3RemainingAmount:    course.Step3RemainingAmount,
-			Step4DeductAmount:       course.Step4DeductAmount,
-			Step4RemainingAmount:    course.Step4RemainingAmount,
-			Step5DeductAmount:       course.Step5DeductAmount,
-			Step5RemainingAmount:    course.Step5RemainingAmount,
-			Step6DeductAmount:       course.Step6DeductAmount,
-			FinalRemainingAmount:    course.FinalRemainingAmount,
-			Details:                 make([]AnnualBudgetSummaryDetailResponse, 0, len(course.Details)),
-			CreatedAt:               formatTime(course.CreatedAt),
-			UpdatedAt:               formatTime(course.UpdatedAt),
+
+			TuitionFees:   tuitionFees,
+			StudentAmount: studentAmount,
+			GrossAmount:   grossAmount,
+			RiskAmount:    riskAmount,
+			RiskPercent:   riskPercent,
+
+			InitialAmount: roundBudget2(course.InitialAmount),
+
+			Step2DeductAmount:    roundBudget2(course.Step2DeductAmount),
+			Step2RemainingAmount: roundBudget2(course.Step2RemainingAmount),
+
+			Step3DeductAmount:    roundBudget2(course.Step3DeductAmount),
+			Step3RemainingAmount: roundBudget2(course.Step3RemainingAmount),
+
+			Step4DeductAmount:    roundBudget2(course.Step4DeductAmount),
+			Step4RemainingAmount: roundBudget2(course.Step4RemainingAmount),
+
+			Step5DeductAmount:    roundBudget2(course.Step5DeductAmount),
+			Step5RemainingAmount: roundBudget2(course.Step5RemainingAmount),
+
+			Step6DeductAmount:    roundBudget2(course.Step6DeductAmount),
+			FinalRemainingAmount: roundBudget2(course.FinalRemainingAmount),
+
+			Details:   make([]AnnualBudgetSummaryDetailResponse, 0, len(course.Details)),
+			CreatedAt: formatTime(course.CreatedAt),
+			UpdatedAt: formatTime(course.UpdatedAt),
 		}
 
 		for _, detail := range course.Details {
@@ -315,8 +459,8 @@ func mapSummaryResponse(item *models.AnnualBudgetSummary) AnnualBudgetSummaryRes
 				RefType:         detail.RefType,
 				RefID:           refID,
 				NameSnapshot:    detail.NameSnapshot,
-				Percent:         detail.Percent,
-				DeductAmount:    detail.DeductAmount,
+				Percent:         roundBudget2(detail.Percent),
+				DeductAmount:    roundBudget2(detail.DeductAmount),
 				CreatedAt:       formatTime(detail.CreatedAt),
 				UpdatedAt:       formatTime(detail.UpdatedAt),
 			})
@@ -326,6 +470,56 @@ func mapSummaryResponse(item *models.AnnualBudgetSummary) AnnualBudgetSummaryRes
 	}
 
 	return response
+}
+
+func normalizePercentForSave(value float64) float64 {
+	if value <= 0 {
+		return 0
+	}
+
+	if value <= 1 {
+		return roundBudget2(value * 100)
+	}
+
+	return roundBudget2(value)
+}
+
+func (s *AnnualBudgetSummaryService) resolvePercentFromRef(refType string, refID *uuid.UUID, fallback float64) float64 {
+	fallback = normalizePercentForSave(fallback)
+
+	if fallback > 0 || refID == nil || *refID == uuid.Nil {
+		return fallback
+	}
+
+	var percent float64
+
+	switch refType {
+	case "fund":
+		_ = s.Repo.DB.
+			Table("funds").
+			Select("percent").
+			Where("id = ?", *refID).
+			Where("deleted_at IS NULL").
+			Scan(&percent).Error
+
+	case "central":
+		_ = s.Repo.DB.
+			Table("central_splits").
+			Select("percent").
+			Where("id = ?", *refID).
+			Where("deleted_at IS NULL").
+			Scan(&percent).Error
+
+	case "university_work":
+		_ = s.Repo.DB.
+			Table("university_work_splits").
+			Select("percent").
+			Where("id = ?", *refID).
+			Where("deleted_at IS NULL").
+			Scan(&percent).Error
+	}
+
+	return normalizePercentForSave(percent)
 }
 
 func (s *AnnualBudgetSummaryService) Create(input CreateAnnualBudgetSummaryInput) (*AnnualBudgetSummaryResponse, error) {
@@ -449,12 +643,18 @@ func (s *AnnualBudgetSummaryService) Create(input CreateAnnualBudgetSummaryInput
 				return nil, err
 			}
 
+			percent := s.resolvePercentFromRef(
+				detailInput.RefType,
+				refID,
+				detailInput.Percent,
+			)
+
 			details = append(details, models.AnnualBudgetSummaryDetail{
 				Step:         detailInput.Step,
 				RefType:      detailInput.RefType,
 				RefID:        refID,
 				NameSnapshot: detailInput.NameSnapshot,
-				Percent:      roundBudget2(detailInput.Percent),
+				Percent:      percent,
 				DeductAmount: roundBudget2(detailInput.DeductAmount),
 			})
 		}

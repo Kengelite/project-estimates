@@ -56,11 +56,10 @@ function Badge({
 
   return (
     <span
-      className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${
-        text === "พิเศษ"
+      className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${text === "พิเศษ"
           ? "border-orange-100 bg-orange-50 text-orange-600"
           : "border-gray-200 bg-gray-100 text-gray-500"
-      }`}
+        }`}
     >
       {text}
     </span>
@@ -70,13 +69,61 @@ function Badge({
 function DegreeIcon({ name }: { name: string }) {
   const label = (name || "").toLowerCase();
 
-  let emoji = "🎓";
-  if (label.includes("โท") || label.includes("master")) emoji = "📘";
-  if (label.includes("เอก") || label.includes("doctor")) emoji = "📙";
+  const isMaster = label.includes("โท") || label.includes("master");
+  const isDoctor = label.includes("เอก") || label.includes("doctor");
 
   return (
-    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 text-2xl shadow-sm">
-      {emoji}
+    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm">
+      {isDoctor ? (
+        <svg
+          width="25"
+          height="25"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.15"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 3 2 8l10 5 10-5-10-5Z" />
+          <path d="M6 10v5c0 2 3 4 6 4s6-2 6-4v-5" />
+          <path d="M22 8v6" />
+          <circle cx="22" cy="16" r="1" />
+          <path d="M9 17l3 3 5-6" />
+        </svg>
+      ) : isMaster ? (
+        <svg
+          width="25"
+          height="25"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.15"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+          <path d="M9 7h7" />
+          <path d="M9 11h5" />
+        </svg>
+      ) : (
+        <svg
+          width="25"
+          height="25"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.15"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 3 2 8l10 5 10-5-10-5Z" />
+          <path d="M6 10v5c0 2 3 4 6 4s6-2 6-4v-5" />
+          <path d="M22 8v6" />
+          <circle cx="22" cy="16" r="1" />
+        </svg>
+      )}
     </div>
   );
 }
@@ -109,25 +156,22 @@ function StatusSwitch({
       type="button"
       onClick={onChange}
       disabled={disabled}
-      className={`relative inline-flex h-8 w-[58px] flex-shrink-0 items-center rounded-full border transition-all ${
-        checked
+      className={`relative inline-flex h-8 w-[58px] flex-shrink-0 items-center rounded-full border transition-all ${checked
           ? "border-emerald-500 bg-emerald-500 shadow-[0_4px_10px_rgba(16,185,129,0.28)]"
           : "border-gray-300 bg-gray-300"
-      } ${disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:opacity-95"}`}
+        } ${disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:opacity-95"}`}
       aria-pressed={checked}
     >
       <span
-        className={`absolute left-2 text-[10px] font-semibold text-white transition-opacity ${
-          checked ? "opacity-100" : "opacity-0"
-        }`}
+        className={`absolute left-2 text-[10px] font-semibold text-white transition-opacity ${checked ? "opacity-100" : "opacity-0"
+          }`}
       >
         เปิด
       </span>
 
       <span
-        className={`inline-block h-6 w-6 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-          checked ? "translate-x-7" : "translate-x-1"
-        }`}
+        className={`inline-block h-6 w-6 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-7" : "translate-x-1"
+          }`}
       />
     </button>
   );

@@ -55,17 +55,34 @@ func (r *AnnualBudgetSummaryRepository) GetAll() ([]models.AnnualBudgetSummary, 
 		Preload("Year").
 		Preload("Semester").
 		Preload("CreatedBy").
+
+		// รายการหลักสูตรใน summary
 		Preload("Courses", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Where("annual_budget_summary_courses.deleted_at IS NULL").
 				Order("annual_budget_summary_courses.created_at ASC")
 		}).
+
+		// ข้อมูลหลักสูตรจริง เพื่อให้ frontend/export ใช้ tuitionFees ได้
 		Preload("Courses.Course").
+
+		// ระดับปริญญา เผื่อใช้แสดงหรือจัดกลุ่ม
+		Preload("Courses.Course.DegreeLevel").
+
+		// จำนวนนักศึกษา relation ใน model Course ชื่อ Students ไม่ใช่ CourseStudents
+		Preload("Courses.Course.Students", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("course_students.deleted_at IS NULL").
+				Order("course_students.created_at ASC")
+		}).
+
+		// รายละเอียดการหักแต่ละ step เช่น กองทุน / บริหาร / หลักสูตร
 		Preload("Courses.Details", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Where("annual_budget_summary_details.deleted_at IS NULL").
 				Order("annual_budget_summary_details.created_at ASC")
 		}).
+
 		Where("annual_budget_summaries.deleted_at IS NULL").
 		Order("annual_budget_summaries.created_at DESC").
 		Find(&items).Error
@@ -80,17 +97,34 @@ func (r *AnnualBudgetSummaryRepository) GetByID(id string) (*models.AnnualBudget
 		Preload("Year").
 		Preload("Semester").
 		Preload("CreatedBy").
+
+		// รายการหลักสูตรใน summary
 		Preload("Courses", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Where("annual_budget_summary_courses.deleted_at IS NULL").
 				Order("annual_budget_summary_courses.created_at ASC")
 		}).
+
+		// ข้อมูลหลักสูตรจริง เพื่อให้ frontend/export ใช้ tuitionFees ได้
 		Preload("Courses.Course").
+
+		// ระดับปริญญา
+		Preload("Courses.Course.DegreeLevel").
+
+		// จำนวนนักศึกษา relation ใน model Course ชื่อ Students
+		Preload("Courses.Course.Students", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("course_students.deleted_at IS NULL").
+				Order("course_students.created_at ASC")
+		}).
+
+		// รายละเอียดการหักแต่ละ step
 		Preload("Courses.Details", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Where("annual_budget_summary_details.deleted_at IS NULL").
 				Order("annual_budget_summary_details.created_at ASC")
 		}).
+
 		Where("annual_budget_summaries.deleted_at IS NULL").
 		First(&item, "annual_budget_summaries.id = ?", id).Error
 

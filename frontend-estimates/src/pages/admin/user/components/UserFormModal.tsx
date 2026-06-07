@@ -64,12 +64,30 @@ function EyeIcon({ hidden }: { hidden: boolean }) {
   );
 }
 
+function ChevronDownIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 function PasswordInput({
   label,
   required,
   value,
   placeholder,
   visible,
+  disabled,
   onToggleVisible,
   onChange,
 }: {
@@ -78,6 +96,7 @@ function PasswordInput({
   value: string;
   placeholder: string;
   visible: boolean;
+  disabled?: boolean;
   onToggleVisible: () => void;
   onChange: (value: string) => void;
 }) {
@@ -91,15 +110,17 @@ function PasswordInput({
         <input
           type={visible ? "text" : "password"}
           value={value}
+          disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-xl border border-gray-200 px-4 py-2.5 pr-11 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400"
+          className="w-full rounded-xl border border-gray-200 px-4 py-2.5 pr-11 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
         />
 
         <button
           type="button"
           onClick={onToggleVisible}
-          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-gray-400 transition-colors hover:text-blue-600"
+          disabled={disabled}
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-gray-400 transition-colors hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label={visible ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
         >
           <EyeIcon hidden={!visible} />
@@ -159,10 +180,11 @@ export default function UserFormModal({
             <input
               type="text"
               value={formData.fname}
+              disabled={submitting}
               onChange={(event) => onChange("fname", event.target.value)}
               placeholder="เช่น สมชาย"
               maxLength={100}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400"
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
 
@@ -174,10 +196,11 @@ export default function UserFormModal({
             <input
               type="text"
               value={formData.lname}
+              disabled={submitting}
               onChange={(event) => onChange("lname", event.target.value)}
               placeholder="เช่น ใจดี"
               maxLength={100}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400"
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
         </div>
@@ -190,10 +213,11 @@ export default function UserFormModal({
           <input
             type="email"
             value={formData.email}
+            disabled={submitting}
             onChange={(event) => onChange("email", event.target.value)}
             placeholder="เช่น admin@example.com"
             maxLength={150}
-            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400"
+            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 outline-none transition-colors placeholder-gray-400 focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
           />
         </div>
 
@@ -202,18 +226,25 @@ export default function UserFormModal({
             บทบาท <span className="text-red-500">*</span>
           </label>
 
-          <select
-            value={formData.roleId}
-            onChange={(event) => onChange("roleId", event.target.value)}
-            className="w-full cursor-pointer rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 outline-none transition-colors focus:border-blue-400"
-          >
-            <option value="">เลือกบทบาท</option>
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.description || role.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={formData.roleId}
+              disabled={submitting}
+              onChange={(event) => onChange("roleId", event.target.value)}
+              className="block w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-11 text-sm text-gray-800 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">เลือกบทบาท</option>
+              {roles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.description || role.name}
+                </option>
+              ))}
+            </select>
+
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex w-11 items-center justify-center text-gray-400">
+              <ChevronDownIcon />
+            </div>
+          </div>
         </div>
 
         <PasswordInput
@@ -221,6 +252,7 @@ export default function UserFormModal({
           required={mode === "add"}
           value={formData.pwd}
           visible={showPassword}
+          disabled={submitting}
           onToggleVisible={() => setShowPassword((prev) => !prev)}
           onChange={(value) => {
             onChange("pwd", value);
@@ -245,12 +277,13 @@ export default function UserFormModal({
         {shouldShowConfirmPassword && (
           <PasswordInput
             label="ยืนยันรหัสผ่าน"
-            required={mode === "add" || formData.pwd.length > 0}
+            required
             value={formData.confirmPwd}
             visible={showConfirmPassword}
+            disabled={submitting}
             onToggleVisible={() => setShowConfirmPassword((prev) => !prev)}
             onChange={(value) => onChange("confirmPwd", value)}
-            placeholder="ยืนยันรหัสผ่าน"
+            placeholder="กรอกรหัสผ่านอีกครั้ง"
           />
         )}
       </div>
@@ -260,7 +293,7 @@ export default function UserFormModal({
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           ยกเลิก
         </button>
@@ -269,7 +302,7 @@ export default function UserFormModal({
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
         >
           {submitting ? "กำลังบันทึก..." : "บันทึก"}
         </button>

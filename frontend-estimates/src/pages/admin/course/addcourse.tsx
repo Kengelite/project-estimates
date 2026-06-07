@@ -949,9 +949,6 @@ export default function AddCourse() {
                                 onChange={(e) => handleCodeChange(e.target.value)}
                                 className={inputCls}
                             />
-                            <p className="mt-2 text-xs text-gray-400">
-                                กรุณากรอกตัวย่อสาขาด้านหลังชื่อย่อปริญญา
-                            </p>
                         </div>
 
                         <div className="lg:col-span-2">
@@ -1468,7 +1465,7 @@ export default function AddCourse() {
 
                                                 <div>
                                                     <label className="mb-2 block text-sm font-medium text-gray-800">
-                                                        จำนวน(คน) <span className="text-red-500">*</span>
+                                                        จำนวน (คน) <span className="text-red-500">*</span>
                                                     </label>
                                                     <input
                                                         type="text"
