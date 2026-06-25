@@ -223,18 +223,6 @@ function makeLocalId() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function onlyNumberWithDecimal(value: string) {
-    if (value === "") return "";
-    if (!/^\d*\.?\d{0,2}$/.test(value)) return null;
-    return value;
-}
-
-function onlyInteger(value: string) {
-    if (value === "") return "";
-    if (!/^\d+$/.test(value)) return null;
-    return value;
-}
-
 function formatDegreeLabel(level: DegreeLevelOption) {
     const sectionName = (level.sectionName || "").trim();
     if (!sectionName) return level.name;
@@ -257,12 +245,8 @@ export default function AddCourse() {
     const [submitting, setSubmitting] = useState(false);
 
     const [degreeLevels, setDegreeLevels] = useState<DegreeLevelOption[]>([]);
-    const [subjectCategories, setSubjectCategories] = useState<
-        SubjectCategoryOption[]
-    >([]);
-    const [subjectOutsides, setSubjectOutsides] = useState<SubjectOutsideOption[]>(
-        [],
-    );
+    const [subjectCategories, setSubjectCategories] = useState<SubjectCategoryOption[]>([]);
+    const [subjectOutsides, setSubjectOutsides] = useState<SubjectOutsideOption[]>([]);
     const [years, setYears] = useState<YearOption[]>([]);
 
     const [degreeLevelId, setDegreeLevelId] = useState(degreeLevelIdFromQuery);
@@ -418,7 +402,7 @@ export default function AddCourse() {
             );
 
             const mappedYears: YearOption[] = (yearRes || []).map((item: any) => ({
-                id: item.id,
+                id: String(item.id),
                 year: String(item.year || ""),
             }));
 
@@ -465,9 +449,7 @@ export default function AddCourse() {
             const normalizedValue = next.replace(/\./g, "");
 
             if (normalizedValue.startsWith(normalizedPrefix)) {
-                const suffix = normalizedValue
-                    .slice(normalizedPrefix.length)
-                    .slice(0, 10);
+                const suffix = normalizedValue.slice(normalizedPrefix.length).slice(0, 10);
                 setCode(`${prefix}${suffix}`);
                 return;
             }
@@ -531,11 +513,35 @@ export default function AddCourse() {
     };
 
     const addStudent = () => {
+        const usedYearIds = students
+            .map((item) => String(item.yearId))
+            .filter(Boolean);
+
+        const availableYear = years.find(
+            (year) => !usedYearIds.includes(String(year.id)),
+        );
+
+        if (!availableYear) {
+            Swal.fire({
+                icon: "warning",
+                title: "เพิ่มไม่ได้",
+                text: "เลือกปีการศึกษาครบทั้งหมดแล้ว",
+                confirmButtonColor: "#3b82f6",
+            });
+            return;
+        }
+
         const newId = makeLocalId();
+
         setStudents((prev) => [
             ...prev,
-            { id: newId, yearId: "", studentAmount: "" },
+            {
+                id: newId,
+                yearId: String(availableYear.id),
+                studentAmount: "",
+            },
         ]);
+
         setEditingStudentId(newId);
     };
 
@@ -598,7 +604,7 @@ export default function AddCourse() {
     ) => {
         if (field === "yearId" && value) {
             const duplicated = students.some(
-                (item) => item.id !== id && item.yearId === value,
+                (item) => item.id !== id && String(item.yearId) === String(value),
             );
 
             if (duplicated) {
@@ -749,7 +755,7 @@ export default function AddCourse() {
     };
 
     const getYearLabel = (id: string) => {
-        return years.find((item) => String(item.id) === id)?.year || "-";
+        return years.find((item) => String(item.id) === String(id))?.year || "-";
     };
 
     const handleCreateCourse = async () => {
@@ -985,7 +991,9 @@ export default function AddCourse() {
                                 type="text"
                                 value={duration}
                                 maxLength={11}
-                                onChange={(e) => handleIntegerCommaInput(e.target.value, setDuration)}
+                                onChange={(e) =>
+                                    handleIntegerCommaInput(e.target.value, setDuration)
+                                }
                                 placeholder="เช่น 4"
                                 className={numberInputCls}
                             />
@@ -1126,7 +1134,11 @@ export default function AddCourse() {
 
                                                             if (!/^\d+$/.test(raw)) return;
 
-                                                            updateGroup(group.id, "credit", Number(raw).toLocaleString("en-US"));
+                                                            updateGroup(
+                                                                group.id,
+                                                                "credit",
+                                                                Number(raw).toLocaleString("en-US"),
+                                                            );
                                                         }}
                                                         className={numberInputCls}
                                                         placeholder="เช่น 30"
@@ -1149,7 +1161,9 @@ export default function AddCourse() {
                                                         หน่วยกิต
                                                     </label>
                                                     <div className={viewBoxCls}>
-                                                        {Number(stripComma(group.credit) || 0).toLocaleString("en-US")}
+                                                        {Number(stripComma(group.credit) || 0).toLocaleString(
+                                                            "en-US",
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1326,7 +1340,11 @@ export default function AddCourse() {
 
                                                             if (!/^\d*\.?\d{0,2}$/.test(raw)) return;
 
-                                                            updateOutsideSubject(item.id, "amount", formatNumberWithComma(raw));
+                                                            updateOutsideSubject(
+                                                                item.id,
+                                                                "amount",
+                                                                formatNumberWithComma(raw),
+                                                            );
                                                         }}
                                                         className={numberInputCls}
                                                         placeholder="เช่น 500"
@@ -1349,7 +1367,9 @@ export default function AddCourse() {
                                                         จำนวนเงิน (บาท)
                                                     </label>
                                                     <div className={viewBoxCls}>
-                                                        {Number(stripComma(item.amount) || 0).toLocaleString("en-US")}
+                                                        {Number(stripComma(item.amount) || 0).toLocaleString(
+                                                            "en-US",
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1445,7 +1465,7 @@ export default function AddCourse() {
                                                                 const isUsedByOther = students.some(
                                                                     (row) =>
                                                                         row.id !== student.id &&
-                                                                        row.yearId === year.id,
+                                                                        String(row.yearId) === String(year.id),
                                                                 );
 
                                                                 return (
@@ -1481,7 +1501,11 @@ export default function AddCourse() {
 
                                                             if (!/^\d+$/.test(raw)) return;
 
-                                                            updateStudent(student.id, "studentAmount", Number(raw).toLocaleString("en-US"));
+                                                            updateStudent(
+                                                                student.id,
+                                                                "studentAmount",
+                                                                Number(raw).toLocaleString("en-US"),
+                                                            );
                                                         }}
                                                         className={numberInputCls}
                                                         placeholder="เช่น 120"
@@ -1504,7 +1528,9 @@ export default function AddCourse() {
                                                         จำนวน(คน)
                                                     </label>
                                                     <div className={viewBoxCls}>
-                                                        {Number(stripComma(student.studentAmount) || 0).toLocaleString("en-US")}
+                                                        {Number(
+                                                            stripComma(student.studentAmount) || 0,
+                                                        ).toLocaleString("en-US")}
                                                     </div>
                                                 </div>
                                             </div>

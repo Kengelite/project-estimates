@@ -50,9 +50,11 @@ interface SubjectRow {
   name: string;
   year: number;
   yearId: number;
+  yearText: string;
   semesterId: number;
-  semesterLabel: string;
-  semesterDisplay: string;
+  semesterName: string;
+  semesterNo: string;
+  filterValue: string;
   branches: Branch[];
   active: boolean;
   courseName: string;
@@ -63,44 +65,21 @@ interface SubjectRow {
 interface YearOption {
   id: number;
   year: string;
-  status?: string;
+  status: string;
 }
 
 interface SemesterOption {
   id: number;
   name: string;
-  status?: string;
+  status: string;
 }
 
-const BRANCH_COLOR: Record<
-  Branch,
-  { bg: string; text: string; border: string }
-> = {
-  CS: {
-    bg: "bg-green-100",
-    text: "text-green-700",
-    border: "border-green-300",
-  },
-  ITII: {
-    bg: "bg-yellow-100",
-    text: "text-yellow-700",
-    border: "border-yellow-300",
-  },
-  GIS: {
-    bg: "bg-cyan-100",
-    text: "text-cyan-700",
-    border: "border-cyan-300",
-  },
-  AI: {
-    bg: "bg-pink-100",
-    text: "text-pink-600",
-    border: "border-pink-300",
-  },
-  CY: {
-    bg: "bg-orange-100",
-    text: "text-orange-600",
-    border: "border-orange-300",
-  },
+const BRANCH_COLOR: Record<Branch, { bg: string; text: string; border: string }> = {
+  CS: { bg: "bg-green-100", text: "text-green-700", border: "border-green-300" },
+  ITII: { bg: "bg-yellow-100", text: "text-yellow-700", border: "border-yellow-300" },
+  GIS: { bg: "bg-cyan-100", text: "text-cyan-700", border: "border-cyan-300" },
+  AI: { bg: "bg-pink-100", text: "text-pink-600", border: "border-pink-300" },
+  CY: { bg: "bg-orange-100", text: "text-orange-600", border: "border-orange-300" },
 };
 
 const BRANCH_AVATAR: Record<Branch, string> = {
@@ -119,6 +98,10 @@ function fmt(n: number) {
 
 function normalizeText(value: unknown) {
   return String(value ?? "").toLowerCase().trim();
+}
+
+function uniqueArray<T>(items: T[]) {
+  return Array.from(new Set(items.filter(Boolean)));
 }
 
 function getBranchFromCourseName(courseName: string): Branch {
@@ -142,21 +125,21 @@ function getStudyYearFromApi(row: SubjectApiRow): number {
 }
 
 function getSemesterNo(value: string) {
-  const text = String(value ?? "").trim();
+  const text = normalizeText(value);
+
+  if (text === "1" || text.includes("ต้น")) return "1";
+  if (text === "2" || text.includes("ปลาย")) return "2";
+  if (text === "3" || text.includes("ฤดูร้อน") || text.includes("summer")) {
+    return "3";
+  }
+
   const matched = text.match(/\d+/);
-  return matched?.[0] || text;
+  return matched?.[0] || "";
 }
 
 function getSemesterThaiName(value: string) {
-  const text = normalizeText(value);
-
-  if (text === "1" || text.includes("ต้น")) return "ภาคต้น";
-  if (text === "2" || text.includes("ปลาย")) return "ภาคปลาย";
-  if (text === "3" || text.includes("ฤดูร้อน") || text.includes("summer")) {
-    return "ภาคฤดูร้อน";
-  }
-
   const no = getSemesterNo(value);
+
   if (no === "1") return "ภาคต้น";
   if (no === "2") return "ภาคปลาย";
   if (no === "3") return "ภาคฤดูร้อน";
@@ -175,25 +158,20 @@ function mapYearOption(item: any): YearOption {
 function mapSemesterOption(item: any): SemesterOption {
   return {
     id: Number(item?.id ?? item?.semesterId ?? 0),
-    name: String(item?.name ?? item?.semester ?? item?.semester_name ?? ""),
+    name: String(
+      item?.name ??
+        item?.semester ??
+        item?.semesterName ??
+        item?.semester_name ??
+        "",
+    ),
     status: String(item?.status ?? "1"),
   };
 }
 
-function buildSemesterLabel(yearText: string, semesterName: string) {
-  const semesterNo = getSemesterNo(semesterName);
-  if (!yearText || !semesterNo) return "";
-  return `${yearText}/${semesterNo}`;
-}
-
-function buildSemesterDisplay(yearText: string, semesterName: string) {
-  const label = buildSemesterLabel(yearText, semesterName);
-  if (!label) return "";
-  return `${label} (${getSemesterThaiName(semesterName)})`;
-}
-
 function isSpecialCourseName(courseName: string) {
   const text = normalizeText(courseName);
+
   return (
     text.includes("พิเศษ") ||
     text.includes("special") ||
@@ -209,7 +187,6 @@ function makeGroupKey(row: SubjectRow) {
     row.year,
     row.yearId,
     row.semesterId,
-    row.semesterLabel,
   ].join("|");
 }
 
@@ -219,21 +196,20 @@ function sortBranches(branches: Branch[]) {
   );
 }
 
-function uniqueArray<T>(items: T[]) {
-  return Array.from(new Set(items.filter(Boolean)));
-}
-
 function mapApiToSubjectRow(
   row: SubjectApiRow,
   yearMap: Map<number, string>,
   semesterMap: Map<number, string>,
 ): SubjectRow {
-  const yearText =
-    String(row.year || "").trim() || yearMap.get(Number(row.yearId)) || "";
+  const yearId = Number(row.yearId || 0);
+  const semesterId = Number(row.semesterId || 0);
+
+  const yearText = String(row.year || "").trim() || yearMap.get(yearId) || "";
   const semesterName =
-    String(row.semester || "").trim() ||
-    semesterMap.get(Number(row.semesterId)) ||
-    "";
+    String(row.semester || "").trim() || semesterMap.get(semesterId) || "";
+
+  const semesterNo = getSemesterNo(semesterName);
+  const filterValue = `${yearId}-${semesterId}`;
 
   const total =
     Number(row.totalAmount ?? 0) || Number(row.totalDeductAmount ?? 0);
@@ -248,10 +224,12 @@ function mapApiToSubjectRow(
     code: row.subjectCode,
     name: row.subjectName,
     year: getStudyYearFromApi(row),
-    yearId: Number(row.yearId),
-    semesterId: Number(row.semesterId),
-    semesterLabel: buildSemesterLabel(yearText, semesterName),
-    semesterDisplay: buildSemesterDisplay(yearText, semesterName),
+    yearId,
+    yearText,
+    semesterId,
+    semesterName,
+    semesterNo,
+    filterValue,
     branches: [branch],
     active,
     courseName: row.courseName,
@@ -289,13 +267,6 @@ function groupSubjectRows(rows: SubjectRow[]) {
     }
 
     const mergedCourseItems = [...existing.courseItems, ...row.courseItems];
-    const mergedBranches = sortBranches(
-      uniqueArray([
-        ...existing.branches,
-        ...row.branches,
-        ...mergedCourseItems.map((item) => item.branch),
-      ]),
-    );
 
     map.set(key, {
       ...existing,
@@ -304,7 +275,13 @@ function groupSubjectRows(rows: SubjectRow[]) {
         ...existing.subjectCourseIds,
         ...row.subjectCourseIds,
       ]),
-      branches: mergedBranches,
+      branches: sortBranches(
+        uniqueArray([
+          ...existing.branches,
+          ...row.branches,
+          ...mergedCourseItems.map((item) => item.branch),
+        ]),
+      ),
       active: existing.active || row.active,
       totalDeductAmount:
         Number(existing.totalDeductAmount || 0) +
@@ -318,6 +295,7 @@ function groupSubjectRows(rows: SubjectRow[]) {
 
 function BranchBadge({ branch }: { branch: Branch }) {
   const c = BRANCH_COLOR[branch];
+
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${c.bg} ${c.text} ${c.border}`}
@@ -336,20 +314,24 @@ function Toggle({
 }) {
   return (
     <button
+      type="button"
       onClick={onChange}
-      className={`relative inline-flex h-8 w-[64px] items-center rounded-full px-1 transition-colors ${active ? "bg-emerald-500" : "bg-gray-300"
-        }`}
+      className={`relative inline-flex h-8 w-[64px] items-center rounded-full px-1 transition-colors ${
+        active ? "bg-emerald-500" : "bg-gray-300"
+      }`}
     >
       <span
-        className={`absolute text-[11px] font-bold text-white transition-all ${active ? "left-2" : "right-2"
-          }`}
+        className={`absolute text-[11px] font-bold text-white transition-all ${
+          active ? "left-2" : "right-2"
+        }`}
       >
         {active ? "เปิด" : "ปิด"}
       </span>
 
       <span
-        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${active ? "translate-x-[32px]" : "translate-x-0"
-          }`}
+        className={`relative z-10 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+          active ? "translate-x-[32px]" : "translate-x-0"
+        }`}
       />
     </button>
   );
@@ -390,6 +372,7 @@ function SummaryCards({
                 ฿ {fmt(s.normal)}
               </span>
             </div>
+
             <div className="flex justify-between items-center">
               <span className="text-xs text-gray-400">โครงการพิเศษ</span>
               <span className="text-sm font-semibold text-gray-800">
@@ -407,7 +390,7 @@ export default function SubjectManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [semester, setSemester] = useState("");
+  const [selectedTerm, setSelectedTerm] = useState("");
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [years, setYears] = useState<YearOption[]>([]);
   const [semesters, setSemesters] = useState<SemesterOption[]>([]);
@@ -434,12 +417,12 @@ export default function SubjectManagement() {
       );
 
       const yearMap = new Map<number, string>();
-      mappedYears.forEach((item: YearOption) => {
+      mappedYears.forEach((item) => {
         yearMap.set(item.id, item.year);
       });
 
       const semesterMap = new Map<number, string>();
-      mappedSemesters.forEach((item: SemesterOption) => {
+      mappedSemesters.forEach((item) => {
         semesterMap.set(item.id, item.name);
       });
 
@@ -466,65 +449,60 @@ export default function SubjectManagement() {
     loadPageData();
   }, []);
 
-  const semesterOptions = useMemo(() => {
-    const activeYears = years
-      .filter((item) => String(item.status ?? "1") === "1")
-      .map((item) => String(item.year).trim())
-      .filter(Boolean)
-      .sort((a, b) => b.localeCompare(a, "th"));
+  const termOptions = useMemo(() => {
+    const activeYears = years.filter((year) => String(year.status) === "1");
+    const activeSemesters = semesters.filter(
+      (semester) => String(semester.status) === "1",
+    );
 
-    const activeSemesters = semesters
-      .filter((item) => String(item.status ?? "1") === "1")
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        no: getSemesterNo(item.name),
-        thaiName: getSemesterThaiName(item.name),
-      }))
-      .filter((item) => item.no)
-      .sort((a, b) => Number(a.no) - Number(b.no));
-
-    const options: { value: string; label: string }[] = [];
+    const options: {
+      value: string;
+      label: string;
+      yearText: string;
+      semesterNo: string;
+    }[] = [];
 
     activeYears.forEach((year) => {
-      activeSemesters.forEach((semesterItem) => {
+      activeSemesters.forEach((semester) => {
+        const semesterNo = getSemesterNo(semester.name);
+        if (!year.year || !semesterNo) return;
+
         options.push({
-          value: `${year}/${semesterItem.no}`,
-          label: `${year}/${semesterItem.no} (${semesterItem.thaiName})`,
+          value: `${year.id}-${semester.id}`,
+          label: `${year.year}/${getSemesterThaiName(semester.name)}`,
+          yearText: year.year,
+          semesterNo,
         });
       });
     });
 
-    return options;
+    return options.sort((a, b) => {
+      const yearCompare = Number(b.yearText) - Number(a.yearText);
+      if (yearCompare !== 0) return yearCompare;
+      return Number(a.semesterNo) - Number(b.semesterNo);
+    });
   }, [years, semesters]);
 
   useEffect(() => {
-    if (semesterOptions.length === 0) {
-      if (semester !== "") setSemester("");
+    if (termOptions.length === 0) {
+      if (selectedTerm !== "") setSelectedTerm("");
       return;
     }
 
-    const hasCurrentSemester = semesterOptions.some(
-      (option) => option.value === semester,
-    );
+    const hasCurrent = termOptions.some((option) => option.value === selectedTerm);
 
-    if (!hasCurrentSemester) {
-      setSemester(semesterOptions[0].value);
+    if (!hasCurrent) {
+      setSelectedTerm(termOptions[0].value);
       setPage(1);
     }
-  }, [semesterOptions, semester]);
+  }, [termOptions, selectedTerm]);
 
   const summaryData = useMemo(() => {
     const seed: Record<
       Branch,
       { branch: Branch; label: string; normal: number; special: number }
     > = {
-      CS: {
-        branch: "CS",
-        label: "วิทยาการคอมพิวเตอร์",
-        normal: 0,
-        special: 0,
-      },
+      CS: { branch: "CS", label: "วิทยาการคอมพิวเตอร์", normal: 0, special: 0 },
       ITII: {
         branch: "ITII",
         label: "เทคโนโลยีสารสนเทศ...",
@@ -547,6 +525,8 @@ export default function SubjectManagement() {
     };
 
     subjects.forEach((subject) => {
+      if (selectedTerm && subject.filterValue !== selectedTerm) return;
+
       subject.courseItems.forEach((item) => {
         if (isSpecialCourseName(item.courseName)) {
           seed[item.branch].special += Number(item.totalDeductAmount || 0);
@@ -557,11 +537,7 @@ export default function SubjectManagement() {
     });
 
     return Object.values(seed);
-  }, [subjects]);
-
-  const handleAddSubject = () => {
-    navigate("/subjects/add");
-  };
+  }, [subjects, selectedTerm]);
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -573,11 +549,11 @@ export default function SubjectManagement() {
         c.code.toLowerCase().includes(keyword) ||
         c.branches.some((b) => b.toLowerCase().includes(keyword));
 
-      const matchedSemester = !semester || c.semesterLabel === semester;
+      const matchedTerm = !selectedTerm || c.filterValue === selectedTerm;
 
-      return matchedSearch && matchedSemester;
+      return matchedSearch && matchedTerm;
     });
-  }, [subjects, search, semester]);
+  }, [subjects, search, selectedTerm]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -586,13 +562,19 @@ export default function SubjectManagement() {
     return filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
   }, [filtered, safePage, pageSize]);
 
+  const handleAddSubject = () => {
+    navigate("/subjects/add");
+  };
+
   const toggleActive = async (row: SubjectRow) => {
     const nextStatus = row.active ? "0" : "1";
 
     const result = await Swal.fire({
       icon: "question",
       title: "ยืนยันการเปลี่ยนสถานะ",
-      text: `ต้องการ${nextStatus === "1" ? "เปิด" : "ปิด"}สถานะรายวิชานี้ใช่หรือไม่`,
+      text: `ต้องการ${
+        nextStatus === "1" ? "เปิด" : "ปิด"
+      }สถานะรายวิชานี้ใช่หรือไม่`,
       showCancelButton: true,
       confirmButtonText: "ยืนยัน",
       cancelButtonText: "ยกเลิก",
@@ -605,6 +587,7 @@ export default function SubjectManagement() {
 
     try {
       const ids = uniqueArray(row.ids);
+
       await Promise.all(
         ids.map((id) => UpdateDataSubjectStatus(id, { status: nextStatus })),
       );
@@ -695,18 +678,19 @@ export default function SubjectManagement() {
 
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-500 font-medium">ปีการศึกษา</span>
+
           <select
-            value={semester}
+            value={selectedTerm}
             onChange={(e) => {
-              setSemester(e.target.value);
+              setSelectedTerm(e.target.value);
               setPage(1);
             }}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-gray-800 bg-white outline-none focus:border-blue-400 cursor-pointer"
+            className="min-w-[190px] border border-gray-200 rounded-lg px-3 py-1.5 text-gray-800 bg-white outline-none focus:border-blue-400 cursor-pointer"
           >
-            {semesterOptions.length === 0 ? (
-              <option value="">ไม่พบปีการศึกษา</option>
+            {termOptions.length === 0 ? (
+              <option value="">ไม่พบปีการศึกษา/ภาคการศึกษา</option>
             ) : (
-              semesterOptions.map((option) => (
+              termOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -718,56 +702,28 @@ export default function SubjectManagement() {
 
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-900">รายวิชานอกคณะ</h1>
+
         <button
           type="button"
           onClick={handleAddSubject}
           className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          เพิ่มรายวิชา
+          + เพิ่มรายวิชา
         </button>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <div className="p-4">
-          <div className="relative">
-            <svg
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="ค้นหารหัสวิชา, รายวิชา, หรือสาขา..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 transition-colors placeholder-gray-400"
-            />
-          </div>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="ค้นหารหัสวิชา, รายวิชา, หรือสาขา..."
+            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 transition-colors placeholder-gray-400"
+          />
         </div>
 
         <div className="overflow-x-auto">
@@ -801,17 +757,14 @@ export default function SubjectManagement() {
             <tbody>
               {loading ? (
                 <tr className="border-t border-gray-100">
-                  <td
-                    colSpan={7}
-                    className="px-6 py-16 text-center text-gray-400"
-                  >
+                  <td colSpan={7} className="px-6 py-16 text-center text-gray-400">
                     กำลังโหลดข้อมูล...
                   </td>
                 </tr>
               ) : paginated.length > 0 ? (
                 paginated.map((row, index) => (
                   <tr
-                    key={`${row.code}-${row.name}-${row.yearId}-${row.semesterId}-${row.subjectCourseIds.join("-")}`}
+                    key={`${row.code}-${row.name}-${row.yearId}-${row.semesterId}`}
                     className="border-t border-gray-100 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-5 text-center">
@@ -853,10 +806,11 @@ export default function SubjectManagement() {
                           type="button"
                           className="text-blue-400 transition-colors hover:text-blue-600"
                           onClick={() => navigate(`${row.id}`)}
+                          title="ดูรายละเอียด"
                         >
                           <svg
-                            width="16"
-                            height="16"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -873,10 +827,11 @@ export default function SubjectManagement() {
                           type="button"
                           className="text-gray-400 transition-colors hover:text-gray-700"
                           onClick={() => navigate(`edit/${row.id}`)}
+                          title="แก้ไข"
                         >
                           <svg
-                            width="15"
-                            height="15"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -893,10 +848,11 @@ export default function SubjectManagement() {
                           type="button"
                           onClick={() => handleDelete(row)}
                           className="text-red-400 transition-colors hover:text-red-600"
+                          title="ลบ"
                         >
                           <svg
-                            width="15"
-                            height="15"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -916,10 +872,7 @@ export default function SubjectManagement() {
                 ))
               ) : (
                 <tr className="border-t border-gray-100">
-                  <td
-                    colSpan={7}
-                    className="px-6 py-16 text-center text-gray-400"
-                  >
+                  <td colSpan={7} className="px-6 py-16 text-center text-gray-400">
                     ไม่พบรายวิชา
                   </td>
                 </tr>

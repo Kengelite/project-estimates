@@ -392,11 +392,11 @@ func (s *CourseService) Create(input CreateCourseInput) (*CourseResponse, error)
 	if input.NameTH == "" {
 		return nil, errors.New("กรุณากรอกชื่อหลักสูตรภาษาไทย")
 	}
-	if len(input.NameTH) > 255 {
-		return nil, errors.New("ชื่อหลักสูตรภาษาไทยต้องไม่เกิน 255 ตัวอักษร")
+	if len(input.NameTH) > 500 {
+		return nil, errors.New("ชื่อหลักสูตรภาษาไทยต้องไม่เกิน 500 ตัวอักษร")
 	}
-	if len(input.NameEN) > 255 {
-		return nil, errors.New("ชื่อหลักสูตรภาษาอังกฤษต้องไม่เกิน 255 ตัวอักษร")
+	if len(input.NameEN) > 500 {
+		return nil, errors.New("ชื่อหลักสูตรภาษาอังกฤษต้องไม่เกิน 500 ตัวอักษร")
 	}
 	if len(input.ShortName) > 10 {
 		return nil, errors.New("ชื่อย่อต้องไม่เกิน 10 ตัวอักษร")
@@ -568,11 +568,11 @@ func (s *CourseService) Update(id string, input UpdateCourseInput) (*CourseRespo
 	if input.NameTH == "" {
 		return nil, errors.New("กรุณากรอกชื่อหลักสูตรภาษาไทย")
 	}
-	if len(input.NameTH) > 255 {
-		return nil, errors.New("ชื่อหลักสูตรภาษาไทยต้องไม่เกิน 255 ตัวอักษร")
+	if len(input.NameTH) > 500 {
+		return nil, errors.New("ชื่อหลักสูตรภาษาไทยต้องไม่เกิน 500 ตัวอักษร")
 	}
-	if len(input.NameEN) > 255 {
-		return nil, errors.New("ชื่อหลักสูตรภาษาอังกฤษต้องไม่เกิน 255 ตัวอักษร")
+	if len(input.NameEN) > 500 {
+		return nil, errors.New("ชื่อหลักสูตรภาษาอังกฤษต้องไม่เกิน 500 ตัวอักษร")
 	}
 	if len(input.ShortName) > 10 {
 		return nil, errors.New("ชื่อย่อต้องไม่เกิน 10 ตัวอักษร")

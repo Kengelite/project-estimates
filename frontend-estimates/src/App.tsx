@@ -55,7 +55,7 @@ function App() {
           <Route path="/manage/subjectoutsides" element={<SubjectOutside />} />
           <Route path="/manage/subjectcategories" element={<SubjectCategory />}/>
           <Route path="/manage/splitgroups" element={<SplitGroupManagement />} />
-          <Route path="/manage/users" element={<UserManagement />} />
+          <Route path="/users" element={<UserManagement />} />
 
           <Route path="/courses" element={<CourseList />} />
           <Route path="/courses/add" element={<AddCourse />} />

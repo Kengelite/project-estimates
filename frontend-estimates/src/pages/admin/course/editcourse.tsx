@@ -1635,9 +1635,7 @@ export default function EditCourse() {
                             จำนวน(คน)
                           </label>
                           <div className={viewBoxCls}>
-                            <div className={viewBoxCls}>
-                              {Number(stripComma(student.studentAmount) || 0).toLocaleString("en-US")}
-                            </div>
+                            {Number(stripComma(student.studentAmount) || 0).toLocaleString("en-US")}
                           </div>
                         </div>
                       </div>

@@ -105,11 +105,6 @@ const navItems: NavItem[] = [
         name: "จัดการกลุ่มสัดส่วน",
         path: "/manage/splitgroups",
       },
-      {
-        icon: <UsersIcon className="w-4 h-4" />,
-        name: "จัดการผู้ใช้งาน",
-        path: "/manage/users",
-      },
     ],
   },
   {
@@ -167,9 +162,14 @@ const navItems: NavItem[] = [
     roles: ["admin", "superadmin", "superstaff"],
   },
   {
+    icon: <UsersIcon className="w-4 h-4" />,
+    name: "จัดการผู้ใช้งาน",
+    path: "/users",
+  },
+  {
     icon: <ArrowRightStartOnRectangleIcon className="w-5 h-5" />,
     name: "ออกจากระบบ",
-    onClick: () => {},
+    onClick: () => { },
     roles: ["admin", "staff", "superadmin", "superstaff"],
   },
 ];
@@ -342,11 +342,10 @@ const AppSidebar: React.FC = () => {
                 <li key={subItem.name}>
                   <Link
                     to={subItem.path}
-                    className={`relative flex h-9 items-center gap-x-3 rounded-lg px-3 ${
-                      isItemActive
+                    className={`relative flex h-9 items-center gap-x-3 rounded-lg px-3 ${isItemActive
                         ? "bg-blue-50 text-blue-700"
                         : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     {isItemActive && (
                       <span className="absolute right-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-l-lg bg-blue-500" />
@@ -435,17 +434,15 @@ const AppSidebar: React.FC = () => {
         const isOpen =
           openSubmenu?.type === menuType && openSubmenu?.index === index;
 
-        const iconClass = `menu-item-icon-size flex-shrink-0 ml-2 ${
-          isItemActive ? "menu-item-icon-active" : "menu-item-icon-inactive"
-        }`;
+        const iconClass = `menu-item-icon-size flex-shrink-0 ml-2 ${isItemActive ? "menu-item-icon-active" : "menu-item-icon-inactive"
+          }`;
 
         const normalMenuClass = "hover:bg-gray-50 text-gray-600 rounded-l-lg";
         const activeMenuClass =
           "bg-blue-50 text-blue-700 border-r-4 border-blue-500 rounded-l-lg";
 
-        const menuClass = `menu-item group w-full py-2 ${
-          isItemActive ? activeMenuClass : normalMenuClass
-        }`;
+        const menuClass = `menu-item group w-full py-2 ${isItemActive ? activeMenuClass : normalMenuClass
+          }`;
 
         if (hasSubItems && nav.subItems) {
           return (
@@ -453,9 +450,8 @@ const AppSidebar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleSubmenuToggle(index, menuType)}
-                className={`menu-item group w-full py-2 text-gray-600 hover:bg-gray-50 rounded-l-lg flex items-center ${
-                  shouldCenterCollapsed ? "lg:justify-center" : ""
-                }`}
+                className={`menu-item group w-full py-2 text-gray-600 hover:bg-gray-50 rounded-l-lg flex items-center ${shouldCenterCollapsed ? "lg:justify-center" : ""
+                  }`}
               >
                 <span className="menu-item-icon-size flex-shrink-0 ml-2 text-gray-500">
                   {nav.icon}
@@ -487,9 +483,8 @@ const AppSidebar: React.FC = () => {
           return (
             <button
               onClick={handleLogout}
-              className={`${menuClass} flex items-center gap-3 ${
-                shouldCenterCollapsed ? "lg:justify-center" : "lg:justify-start"
-              }`}
+              className={`${menuClass} flex items-center gap-3 ${shouldCenterCollapsed ? "lg:justify-center" : "lg:justify-start"
+                }`}
             >
               <span className={`${iconClass} text-red-400`}>{nav.icon}</span>
               {shouldShowContent && (
@@ -505,9 +500,8 @@ const AppSidebar: React.FC = () => {
           return (
             <Link
               to={nav.path}
-              className={`${menuClass} flex items-center gap-3 ${
-                shouldCenterCollapsed ? "lg:justify-center" : "lg:justify-start"
-              }`}
+              className={`${menuClass} flex items-center gap-3 ${shouldCenterCollapsed ? "lg:justify-center" : "lg:justify-start"
+                }`}
             >
               <span className={iconClass}>{nav.icon}</span>
               {shouldShowContent && (
@@ -546,9 +540,8 @@ const AppSidebar: React.FC = () => {
   const renderSectionHeader = useCallback(
     (title: string) => (
       <h2
-        className={`mb-4 ml-2 flex text-xs font-medium uppercase leading-[20px] text-gray-400 dark:text-gray-500 ${
-          shouldCenterCollapsed ? "lg:justify-center" : "justify-start"
-        }`}
+        className={`mb-4 ml-2 flex text-xs font-medium uppercase leading-[20px] text-gray-400 dark:text-gray-500 ${shouldCenterCollapsed ? "lg:justify-center" : "justify-start"
+          }`}
       >
         {shouldShowContent ? title : <Ellipsis className="size-5" />}
       </h2>
@@ -579,9 +572,8 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={handleMouseLeave}
     >
       <div
-        className={`flex py-8 ${
-          shouldCenterCollapsed ? "lg:justify-center" : "justify-start"
-        }`}
+        className={`flex py-8 ${shouldCenterCollapsed ? "lg:justify-center" : "justify-start"
+          }`}
       >
         <Link to="/dashboard" className="flex items-center gap-3">
           {shouldShowContent ? (
