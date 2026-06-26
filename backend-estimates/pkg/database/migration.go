@@ -3,6 +3,8 @@ package database
 import (
 	"log"
 
+	// "github.com/google/uuid"
+
 	// เปลี่ยน "your_project_name" เป็นชื่อ module ในไฟล์ go.mod ของคุณ
 	"backend-estimates/internal/models"
 )
