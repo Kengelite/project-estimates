@@ -1,8 +1,9 @@
 services:
   mysql:
-    image: mysql:8.0 
-    # image: mysql:5.7 #deploy 
-    # platform: linux/amd64docker compose ps
+    # CPU ของ server ไม่รองรับ x86-64-v2 → ใช้ mysql:8.0 ไม่ได้ (crash: Fatal glibc error)
+    # 5.7 รองรับ CPU เก่า + ตรงกับ collation ของ dump (utf8mb4_general_ci)
+    image: mysql:5.7
+    platform: linux/amd64
     container_name: attractions_mysql
     restart: unless-stopped
     environment:

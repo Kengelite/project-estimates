@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // 1. สร้าง Instance ของ Axios และกำหนด Base URL
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001', // ชี้ไปที่ Go Fiber ของเรา
+  baseURL: import.meta.env.VITE_API_URL || '', // ว่าง = เรียกแบบ relative /api/... ให้ proxy (nginx/vite) จัดการ
   timeout: 10000, // ถ้ารอนานเกิน 10 วิให้ตัดจบ
   headers: {
     'Content-Type': 'application/json',

@@ -44,7 +44,7 @@ MYSQL_PASSWORD=pass
 API_PORT=3001
 FRONTEND_PORT=3000
 API_HOST=${params.API_HOST}
-VITE_API_URL=${params.API_HOST}
+VITE_API_URL=
 """.stripIndent()
                     }
                 }

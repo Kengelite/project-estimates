@@ -29,7 +29,7 @@ type AnyUser = {
 const API_BASE =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
-  "http://localhost:3001";
+  ""; // ว่าง = relative /api/... ให้ proxy (nginx/vite) จัดการ
 
 const DEFAULT_AVATAR =
   "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";

@@ -10,4 +10,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'), // 2. เพิ่มบล็อก resolve ตรงนี้
     },
   },
+  // dev เท่านั้น: forward /api -> backend (เทียบเท่ากับ nginx proxy บน production)
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
+  },
 })

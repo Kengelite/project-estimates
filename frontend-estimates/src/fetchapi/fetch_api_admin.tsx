@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const api = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const api = import.meta.env.VITE_API_URL || ""; // ว่าง = relative /api/... ให้ proxy (nginx/vite) จัดการ
 
 /* =========================
    YEAR
